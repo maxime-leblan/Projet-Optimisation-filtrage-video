@@ -53,11 +53,45 @@ void my_median (Mat im_in, Mat im_out, int n)
 		 {
             for (cc = (c-(n/2)); cc < (c-(n/2)+n); cc++)
 			{
-               if ((rr >= 0) && (rr < rows) && (cc >= 0) && (cc < cols))
+				// si le pixel courant de la fenêtre de taille n² est compris dans l'image, on prend la valeur du pixel aux coordonnées (cc, rr)
+                if ((rr >= 0) && (rr < rows) && (cc >= 0) && (cc < cols))
 			    {
-                  v[p] = im_in.at<uchar>(rr,cc);
-                  p++;
+                	v[p] = im_in.at<uchar>(rr,cc);
 			   	}
+				// sinon c'est que l'on se trouve en dehors de l'image : on applique la méthode du remplissage (padding) par miroir
+				else if (rr < 0 && cc < 0)
+				{
+					v[p] = im_in.at<uchar>(-rr - 1, -cc - 1);
+				}
+				else if (rr < 0 && cc >= 0 && cc < cols)
+				{
+					v[p] = im_in.at<uchar>(-rr - 1, cc);
+				}
+				else if (rr < 0 && cc >= cols)
+				{
+					v[p] = im_in.at<uchar>(-rr - 1, cols - (cc - cols) - 1);
+				}
+				else if (rr >= 0 && rr < rows && cc < 0)
+				{
+					v[p] = im_in.at<uchar>(rr, -cc - 1);
+				}
+				else if (rr >= rows && cc < 0)
+				{
+					v[p] = im_in.at<uchar>(rows - (rr - rows) - 1, -cc - 1);
+				}
+				else if (rr >= rows && cc >= cols)
+				{
+					v[p] = im_in.at<uchar>(rows - (rr - rows) - 1, cols - (cc - cols) - 1);
+				}
+				else if (rr >= rows && cc < cols && cc >= 0)
+				{
+					v[p] = im_in.at<uchar>(rows - (rr - rows) - 1, cc);
+				}
+				else if (rr >= 0 && rr < rows && cc >= cols)
+				{
+					v[p] = im_in.at<uchar>(rr, cols - (cc - cols) - 1);
+				}
+				p++;
             }
          }
         
@@ -65,6 +99,5 @@ void my_median (Mat im_in, Mat im_out, int n)
          im_out.at<uchar>(r,c) = v[k/2+1];
       }
 
-}
-
+	}
 };

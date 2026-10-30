@@ -4,7 +4,10 @@ Ce projet est en cours de développement dans le cadre de ma formation d'ingéni
 # Comment exécuter le programme avec WSL (+ caméra intégrée)
 Pour pouvoir compiler puis tester le code ci-dessus, plusieurs manipulations sont nécessaires pour l'exécuter sur Windows avec l'outil WSL.
 
-Dans un premiers temps, assurez-vous d'avoir le code source stocké dans un répertoire qui se situe dans votre répertoire WSL, dont l'adresse est censée commencer au moins par **"\\wsl.localhost\Ubuntu\home\VOTRE-NOM-D-UTILISATEUR"**.
+Dans un premiers temps, assurez-vous d'avoir le code source stocké dans un répertoire qui se situe dans votre répertoire WSL, dont l'adresse est censée commencer au moins par **"\\wsl.localhost\Ubuntu\home\VOTRE-NOM-D-UTILISATEUR"**. Il faut également que la librairie OpenCV soit préalablement installé sur votre machine Linux (dans notre cas sur WSL). Vous pouvez l'installer via la commande ci-dessous : 
+```
+sudo apt install libopencv-dev
+```
 
 Ouvrez d'abord un premier terminal sous WSL et un deuxième terminal sous Windows (Powershell). Nous allons associer la webcam de votre choix (intégrée au PC ou connectée par câble USB) avant de compiler le code source. Pour ce faire, nous devons premièrement récupérer l'ID USB de notre caméra en tapant la commande ci-dessous dans le Powershell Windows : 
 ```
@@ -30,4 +33,4 @@ g++ -O0 -g projet_24_v1.cpp my_functions.cpp -o projet $(pkg-config --cflags --l
 ./projet <NOMBRE>
 ```
 
-**/!\ ATTENTION** : Les opérations d'associations de l'ID USB de votre caméra avec une session WSL et l'octoyation des droits sont valables uniquement tant que la session (et donc le terminal) WSL reste ouverte. A chaque nouveau redémarrage, il est nécessaire d'effectuer à nouveau ces étapes.
+**/!\ ATTENTION** : Les opérations d'associations de l'ID USB de votre caméra avec une session WSL et l'octroyation des droits sont valables uniquement tant que la session (et donc le terminal) WSL reste ouverte. A chaque nouveau redémarrage, il est nécessaire d'effectuer à nouveau ces étapes.

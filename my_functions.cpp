@@ -44,15 +44,20 @@ void my_median (Mat im_in, Mat im_out, int n)
  int r, c, rr, cc, p;
  vector<uchar> v (k);
  
-    for(r=0;r<rows;r++){
-      for(c=0;c<cols;c++){
+    for (r = 0; r < rows; r++)
+	{
+      for (c = 0; c < cols; c++)
+	  {
          p = 0;
-         for(rr=(r-(n/2));rr<(r-(n/2)+n);rr++){
-            for(cc=(c-(n/2));cc<(c-(n/2)+n);cc++){
-               if((rr>=0)&&(rr<rows)&&(cc>=0)&&(cc<cols)){
+         for (rr = (r-(n/2)); rr < (r-(n/2)+n); rr++)
+		 {
+            for (cc = (c-(n/2)); cc < (c-(n/2)+n); cc++)
+			{
+               if ((rr >= 0) && (rr < rows) && (cc >= 0) && (cc < cols))
+			    {
                   v[p] = im_in.at<uchar>(rr,cc);
                   p++;
-	       }
+			   	}
             }
          }
         

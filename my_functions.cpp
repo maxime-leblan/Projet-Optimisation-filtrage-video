@@ -24,7 +24,7 @@ void my_sobel (Mat im_in, Mat im_out)
  	 	int gx = 2*e + ne + se - 2*w - sw - nw + 0*n + 0*c + 0*s;
  	 	int gy = 2*n + ne + nw - 2*s - sw - se + 0*w + 0*c + 0*e;
  	 	
- 	 	float g = sqrt ((float)(gx*gx) + (float)(gy*gy));
+ 	 	float g = abs(gx) + abs(gy);
  	 	
  	 	if (g>255)
  	 		g=255;

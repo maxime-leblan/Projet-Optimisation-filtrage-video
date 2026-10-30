@@ -218,7 +218,10 @@ int main (int argc, char *argv[]) {
     // mesure de temps d'exécution de cette partie :
   gettimeofday(&t0,NULL);
     // **********************************************************************
-    my_median (im_in_gray, im_blurred,n);
+    // allocation des matrices contenant les images intermédiaires
+    Mat	im_blurred_my_code = cv::Mat(rows, cols, CV_8UC1);		// niveau de gris (1 cannal)
+    Mat grad_my_code = cv::Mat(rows, cols, CV_8UC1);
+    my_median (im_in_gray, im_blurred_my_code,n);
     gettimeofday(&t1,NULL);
     temp  = (double)((t1.tv_sec-t0.tv_sec)*1000000LL + t1.tv_usec-t0.tv_usec)/1000.0;
     t_mycode_median = t_mycode_median + temp;
@@ -227,7 +230,7 @@ int main (int argc, char *argv[]) {
     // mesure de temps d'exécution de cette partie :
     gettimeofday(&t0,NULL);
     // ********************************************************************** 
-      my_sobel (im_blurred, grad);
+      my_sobel (im_blurred_my_code, grad_my_code);
 
     // **********************************************************************
     // mesure de temps d'exécution de cette partie :
@@ -238,8 +241,8 @@ int main (int argc, char *argv[]) {
     // ********************************************************************** 
     imshow("Video input",im_in);
     imshow("Video gray levels",im_in_gray);
-    imshow("Video Mediane",im_blurred);    
-    imshow("Video Edge detection",grad);  
+    imshow("Video Mediane",im_blurred_my_code);    
+    imshow("Video Edge detection",grad_my_code);  
 
     key	= waitKey(1);
   }

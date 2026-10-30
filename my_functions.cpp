@@ -96,7 +96,7 @@ void my_median (Mat im_in, Mat im_out, int n)
          }
         
          sort (v.begin(), v.end());
-         im_out.at<uchar>(r,c) = v[k/2+1];
+         im_out.at<uchar>(r,c) = v[k/2];
       }
 
 	}

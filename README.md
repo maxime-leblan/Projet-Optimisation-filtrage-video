@@ -4,7 +4,7 @@ Ce projet est en cours de développement dans le cadre de ma formation d'ingéni
 # Comment exécuter le programme avec WSL (+ caméra intégrée)
 Pour pouvoir compiler puis tester le code ci-dessus, plusieurs manipulations sont nécessaires pour l'exécuter sur Windows avec l'outil WSL.
 
-Dans un premiers temps, assurez-vous d'avoir le code source stocké dans un répertoire qui se situe dans votre répertoire WSL, dont l'adresse est censée commencer au moins par **"\\wsl.localhost\Ubuntu\home\VOTRE-NOM-D-UTILISATEUR"**. Il faut également que la librairie OpenCV soit préalablement installé sur votre machine Linux (dans notre cas sur WSL). Vous pouvez l'installer via la commande ci-dessous : 
+Dans un premiers temps, assurez-vous d'avoir le code source stocké dans un répertoire qui se situe dans votre répertoire WSL, dont l'adresse est censée commencer au moins par **"\\wsl.localhost\Ubuntu\home\VOTRE-NOM-D-UTILISATEUR"**. Il faut également que la librairie OpenCV soit préalablement installée sur votre machine Linux (dans notre cas sur WSL). Vous pouvez l'installer via la commande ci-dessous : 
 ```
 sudo apt install libopencv-dev
 ```

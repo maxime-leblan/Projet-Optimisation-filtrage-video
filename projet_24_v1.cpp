@@ -25,6 +25,7 @@
 #include <iostream>
 #include <time.h>
 #include <sys/time.h>
+#include <algorithm>
 /* 
  * Libraries OpenCV "obligatoires" 
  *
@@ -49,6 +50,49 @@
  ---------------------------------------------------------------------*/  
 using namespace		std;
 using namespace		cv;
+
+/**
+ * Renvoie le temps en nano-seconde
+ * @return un temps en nano-seconde de type long long
+ */
+static inline long long now_ns(void) {
+	struct timespec t;
+	clock_gettime(CLOCK_MONOTONIC, &t);
+	return (long long)t.tv_sec * 1000000000LL + t.tv_nsec;
+}
+/**
+ * Exécute le programme d'OpenCV et MyCode une fois sans effectuer de mesure de temps
+ */
+void warmUp(VideoCapture& cap, Mat3b&	im_in, Mat& im_in_gray, Mat& im_blurred, Mat& grad_x, Mat& grad_y, Mat&	abs_grad_y, Mat& abs_grad_x, Mat&	grad, int n, int rows, int cols)
+{
+  // variable contenant les paramÃ¨tres des images ou d'Ã©xÃ©cution  
+  int	ddepth	  = CV_16S;
+  int	scale	  = 1;
+  int	delta	  = 0;	
+  unsigned char	key = '0';
+  // acquisition d'une trame video - librairie OpenCV
+    cap.read(im_in);
+    cvtColor(im_in, im_in_gray, COLOR_BGR2GRAY);
+  // calcul de la mediane - librairie OpenCV
+      medianBlur(im_in_gray, im_blurred, n);
+      // calcul du gradient- librairie OpenCV
+    /// Gradient Y
+    Sobel( im_blurred, grad_x, ddepth, 1, 0, 3, scale, delta, BORDER_DEFAULT );
+    /// absolute value
+    convertScaleAbs( grad_x, abs_grad_x );
+    /// Gradient Y
+    Sobel( im_blurred, grad_y, ddepth, 0, 1, 3, scale, delta, BORDER_DEFAULT );
+    /// absolute value
+    convertScaleAbs( grad_y, abs_grad_y );
+    /// Total Gradient (approximate)
+    addWeighted( abs_grad_x, 0.5, abs_grad_y, 0.5, 0, grad ); 
+    
+    Mat	im_blurred_my_code = cv::Mat(rows, cols, CV_8UC1);		// niveau de gris (1 cannal)
+    Mat grad_my_code = cv::Mat(rows, cols, CV_8UC1);
+    my_median (im_in_gray, im_blurred_my_code,n);
+    my_sobel (im_blurred_my_code, grad_my_code);
+  
+}
 
 /*----------------------------------------------
  *
@@ -78,6 +122,9 @@ int main (int argc, char *argv[]) {
   int			cols								  = 640;
   cap.set(CAP_PROP_FRAME_WIDTH, cols);	 
   cap.set(CAP_PROP_FRAME_HEIGHT, rows);
+
+  // Définition de l'utilisation ou non de l'exécution mono-coeur ou bien de l'exécution parallélisée
+  cv::setNumThreads(1);
 
   //----------------------------------------------
   // Déclaration des variables - ATTENTION, declaration n'implique pas automatiquement l'allocation de l'espace memoire pour les images !!!
@@ -150,45 +197,86 @@ int main (int argc, char *argv[]) {
     n = 3;
   }
 
-  double iter  = 100; 
+  // déclaration des variables permettant d'effectuer nos mesures
+  double iter  = 110; 
+  int nbWarmIter = 10;
 
+  long long	t0;
+  long long	t1;
 
-  struct timeval	t0;
-  struct timeval	t1;
-  double		t_ref_median = 0.0;
-  double		t_ref_grad  = 0.0;
-  double		t_mycode_median  = 0.0;
-  double		t_mycode_grad    = 0.0;
+  // initialisation des tableaux chargés de stocker les mesures de temps pour pouvoir ensuite extraire la mediane, le min et le max
+  vector<double> t_ref_median_measures;
+  vector<double> t_ref_grad_measures;
+  vector<double> t_mycode_median_measures;
+  vector<double> t_mycode_grad_measures;
+
+  double    fps_ref = 0.0;
+  double    fps_mycode = 0.0;
+
+  double		mean_t_ref_median = 0.0;
+  double    median_t_ref_median = 0.0;
+  double    min_t_ref_median = 0.0;
+  double    max_t_ref_median = 0.0;
+
+  double		mean_t_ref_grad  = 0.0;
+  double		median_t_ref_grad  = 0.0;
+  double		min_t_ref_grad  = 0.0;
+  double		max_t_ref_grad  = 0.0;
+
+  double		mean_t_mycode_median  = 0.0;
+  double		median_t_mycode_median  = 0.0;
+  double		min_t_mycode_median  = 0.0;
+  double		max_t_mycode_median  = 0.0;
+
+  double		mean_t_mycode_grad    = 0.0;
+  double		median_t_mycode_grad    = 0.0;
+  double		min_t_mycode_grad    = 0.0;
+  double		max_t_mycode_grad    = 0.0;
+
   double		temp  = 0.0;
-  double		no_measures = iter;
+  double		no_measures = iter - nbWarmIter;
 
 
 
   while(iter-- !=0 ){
-      
-  // acquisition d'une trame video - librairie OpenCV
+    // on vérifie si nous somme encore dans l'étape warm up du programme ou non
+    if (iter - no_measures >= 0)
+    {
+      warmUp(cap, im_in, im_in_gray, im_blurred, grad_x, grad_y, abs_grad_y, abs_grad_x, grad, n, rows, cols);
+      printf("On échauffe le programme %d \n", (int)(iter - no_measures));
+      continue;
+    }
+    // mesure de temps d'exécution de cette partie :
+    t0 = now_ns();
+    // acquisition d'une trame video - librairie OpenCV
     cap.read(im_in);
 
   //conversion en niveau de gris - librairie OpenCV
   //on travaille en niveau de gris pour ce projet (simplifie la problématique)
     cvtColor(im_in, im_in_gray, COLOR_BGR2GRAY);
+    t1 = now_ns();
+    temp = ((double)(t1 - t0))/(1000000.0);
+    fps_ref += temp;
+    fps_mycode += temp;
     
   // **************************************************************************
   // CODE DE REFERENCE - avec OPENCV, aujourd'hui un standard en traitement d'image
   // --------------------------------------------------------------------------
   // mesure de temps d'exécution de cette partie :
-    gettimeofday(&t0,NULL);
+    t0 = now_ns();
   // **********************************************************************
   // calcul de la mediane - librairie OpenCV
-      medianBlur(im_in_gray, im_blurred, n);
-      gettimeofday(&t1,NULL);
-      temp  = (double)((t1.tv_sec-t0.tv_sec)*1000000LL + t1.tv_usec-t0.tv_usec)/1000.0;
-      t_ref_median  = t_ref_median + temp;
-      printf("-------------------------------------\n");
-      printf("Median Reference \t %g \n", temp);
+    medianBlur(im_in_gray, im_blurred, n);
+    t1 = now_ns();
+    temp  = ((double)(t1 - t0))/(1000000.0);
+    t_ref_median_measures.push_back(temp);
+    mean_t_ref_median  = mean_t_ref_median + temp;
+    fps_ref += temp;
+    printf("-------------------------------------\n");
+    printf("Median Reference \t %g ms\n", temp);
       
     // mesure de temps d'exécution de cette partie :
-    gettimeofday(&t0,NULL);
+    t0 = now_ns();
     // **********************************************************************   
       // calcul du gradient- librairie OpenCV
     /// Gradient Y
@@ -203,11 +291,13 @@ int main (int argc, char *argv[]) {
     addWeighted( abs_grad_x, 0.5, abs_grad_y, 0.5, 0, grad ); 
     // **********************************************************************
     // mesure de temps d'exécution de cette partie :
-    gettimeofday(&t1,NULL);
-    temp  = (double)((t1.tv_sec-t0.tv_sec)*1000000LL + t1.tv_usec-t0.tv_usec)/1000.0;
-    t_ref_grad = t_ref_grad + temp;
+    t1 = now_ns();
+    temp  = ((double)(t1 - t0))/(1000000.0);
+    t_ref_grad_measures.push_back(temp);
+    mean_t_ref_grad = mean_t_ref_grad + temp;
+    fps_ref += temp;
     
-    printf("Sobel Reference \t %g \n", temp);
+    printf("Sobel Reference \t %g ms\n", temp);
     // **********************************************************************
 
 
@@ -216,52 +306,118 @@ int main (int argc, char *argv[]) {
     // CODE A OPTIMISER 
     // --------------------------------------------------------------------------
     // mesure de temps d'exécution de cette partie :
-  gettimeofday(&t0,NULL);
+    t0 = now_ns();
     // **********************************************************************
     // allocation des matrices contenant les images intermédiaires
     Mat	im_blurred_my_code = cv::Mat(rows, cols, CV_8UC1);		// niveau de gris (1 cannal)
     Mat grad_my_code = cv::Mat(rows, cols, CV_8UC1);
     my_median (im_in_gray, im_blurred_my_code,n);
-    gettimeofday(&t1,NULL);
-    temp  = (double)((t1.tv_sec-t0.tv_sec)*1000000LL + t1.tv_usec-t0.tv_usec)/1000.0;
-    t_mycode_median = t_mycode_median + temp;
+    t1 = now_ns();
+    temp  = ((double)(t1 - t0))/(1000000.0);
+    t_mycode_median_measures.push_back(temp);
+    mean_t_mycode_median = mean_t_mycode_median + temp;
+    fps_mycode += temp;
           printf("-------------------------------------\n");
-      printf("Median MyCode \t %g \n", temp);
+      printf("Median MyCode \t %g ms\n", temp);
     // mesure de temps d'exécution de cette partie :
-    gettimeofday(&t0,NULL);
+    t0 = now_ns();
     // ********************************************************************** 
       my_sobel (im_blurred_my_code, grad_my_code);
 
     // **********************************************************************
     // mesure de temps d'exécution de cette partie :
-    gettimeofday(&t1,NULL);
-    temp  = (double)((t1.tv_sec-t0.tv_sec)*1000000LL + t1.tv_usec-t0.tv_usec)/1000.0;
-    t_mycode_grad  = t_mycode_grad + temp;
-      printf("Sobel MyCode \t %g \n", temp);
+    t1 = now_ns();
+    temp  = ((double)(t1 - t0))/(1000000.0);
+    t_mycode_grad_measures.push_back(temp);
+    mean_t_mycode_grad  = mean_t_mycode_grad + temp;
+    fps_mycode += temp;
+      printf("Sobel MyCode \t %g ms\n", temp);
     // ********************************************************************** 
+    t0 = now_ns();
     imshow("Video input",im_in);
     imshow("Video gray levels",im_in_gray);
     imshow("Video Mediane",im_blurred_my_code);    
-    imshow("Video Edge detection",grad_my_code);  
+    imshow("Video Edge detection",grad_my_code);
+    t1 = now_ns();
+    temp = ((double)(t1 - t0))/(1000000.0);
+    fps_ref += temp;
+    fps_mycode += temp;
 
     key	= waitKey(1);
   }
   printf("========================================\n");
-  // Emprimer le temps d'exéuction moyen par version
-    t_ref_median   = t_ref_median / no_measures;
-    t_ref_grad = t_ref_grad / no_measures;
-    t_mycode_median  = t_mycode_median / no_measures;
-    t_mycode_grad  = t_mycode_grad / no_measures;  
+
+  // On trie les valeurs mesurées pour pouvoir calculer la médiane par la suite
+  sort(t_ref_median_measures.begin(), t_ref_median_measures.end());
+  sort(t_ref_grad_measures.begin(), t_ref_grad_measures.end());
+  sort(t_mycode_median_measures.begin(), t_mycode_median_measures.end());
+  sort(t_mycode_grad_measures.begin(), t_mycode_grad_measures.end());
+
+  // On calcule les statistiques de chaque programme
+    fps_ref = no_measures / (fps_ref / 1000.0);
+    fps_mycode = no_measures / (fps_mycode / 1000.0);
+
+    mean_t_ref_median   = mean_t_ref_median / no_measures;
+    median_t_ref_median = t_ref_median_measures[t_ref_median_measures.size() / 2];
+    min_t_ref_median = *min_element(t_ref_median_measures.begin(), t_ref_median_measures.end());
+    max_t_ref_median = *max_element(t_ref_median_measures.begin(), t_ref_median_measures.end());
+
+    mean_t_ref_grad = mean_t_ref_grad / no_measures;
+    median_t_ref_grad = t_ref_grad_measures[t_ref_grad_measures.size() / 2];
+    min_t_ref_grad = *min_element(t_ref_grad_measures.begin(), t_ref_grad_measures.end());
+    max_t_ref_grad = *max_element(t_ref_grad_measures.begin(), t_ref_grad_measures.end());
+
+    mean_t_mycode_median  = mean_t_mycode_median / no_measures;
+    median_t_mycode_median = t_mycode_median_measures[t_mycode_median_measures.size() / 2];
+    min_t_mycode_median = *min_element(t_mycode_median_measures.begin(), t_mycode_median_measures.end());
+    max_t_mycode_median = *max_element(t_mycode_median_measures.begin(), t_mycode_median_measures.end());
+
+    mean_t_mycode_grad  = mean_t_mycode_grad / no_measures;
+    median_t_mycode_grad = t_mycode_grad_measures[t_mycode_grad_measures.size() / 2];
+    min_t_mycode_grad = *min_element(t_mycode_grad_measures.begin(), t_mycode_grad_measures.end());
+    max_t_mycode_grad = *max_element(t_mycode_grad_measures.begin(), t_mycode_grad_measures.end());
     
-    printf(" Mean meadian time reference  %f ms\n",t_ref_median);
-    printf(" Mean sobel time reference  %f ms\n",t_ref_grad);
-    printf(" Mean median time mycode %f ms\n",t_mycode_median);
-    printf(" Mean sobel time mycode %f ms\n\n",t_mycode_grad);
-    
-      printf(" Speedup median %f ms\n",t_ref_median/t_mycode_median);
-      printf(" Speedup sobel %f ms\n",t_ref_grad/t_mycode_grad);
+    // On affiche les statistiques de chaque programme
+    printf("==========================\n");
+    printf("Median reference statistics :\n");
+    printf(" Mean   %f ms\n",mean_t_ref_median);
+    printf(" Median  %f ms\n", median_t_ref_median);
+    printf(" Min  %f ms\n", min_t_ref_median);
+    printf(" Max  %f ms\n", max_t_ref_median);
+    printf("==========================\n");
+    printf("Sobel reference statistics :\n");
+    printf(" Mean   %f ms\n",mean_t_ref_grad);
+    printf(" Median  %f ms\n", median_t_ref_grad);
+    printf(" Min  %f ms\n", min_t_ref_grad);
+    printf(" Max  %f ms\n", max_t_ref_grad);
+
+    printf("==========================\n");
+    printf("Median mycode statistics :\n");
+    printf(" Mean  %f ms\n",mean_t_mycode_median);
+    printf(" Median  %f ms\n", median_t_mycode_median);
+    printf(" Min  %f ms\n", min_t_mycode_median);
+    printf(" Max  %f ms\n", max_t_mycode_median);
+
+    printf("==========================\n");
+    printf("Sobel mycode statistics :\n");
+    printf(" Mean  %f ms\n",mean_t_mycode_grad);
+    printf(" Median  %f ms\n", median_t_mycode_grad);
+    printf(" Min  %f ms\n", min_t_mycode_grad);
+    printf(" Max  %f ms\n", max_t_mycode_grad);
+
+    printf("==========================\n");
+    printf("Other Statistics :\n");
+
+    printf(" Reference pipeline FPS : %f\n", fps_ref);
+    printf(" MyCode pipeline FPS : %f\n", fps_mycode);
+
+    printf(" Speedup median %f\n",mean_t_ref_median/mean_t_mycode_median);
+    printf(" Speedup sobel %f\n",mean_t_ref_grad/mean_t_mycode_grad);
     
     printf("------------------\n");
+
+    int nbThreads = cv::getNumThreads();
+    printf("Nombre de threads utilisés par OpenCV : %d\n", nbThreads);
     
   }
 

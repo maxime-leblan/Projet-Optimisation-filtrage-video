@@ -1,0 +1,11 @@
+Intel(R) Core(TM) i7-14700HX;n : 3;Resolution : 480 * 640;Threads : 1
+Type;Nom;Moyenne (ms);Mediane (ms);Min (ms);Max (ms)
+reference;Median;0.104808;0.103615;0.090666;0.156940
+reference;Sobel;0.270270;0.261855;0.232131;0.601284
+mycode;Median;64.800424;64.884704;60.620479;71.544258
+mycode;Sobel;3.688712;3.673793;3.374537;4.300891
+ 
+Median Speedup;Sobel Speedup
+0.001617;0.073269
+Reference pipeline FPS;MyCode pipeline FPS
+546.213842;14.296980

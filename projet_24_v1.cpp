@@ -236,8 +236,6 @@ int main (int argc, char *argv[]) {
   double		temp  = 0.0;
   double		no_measures = iter - nbWarmIter;
 
-
-
   while(iter-- !=0 ){
     // on vérifie si nous somme encore dans l'étape warm up du programme ou non
     if (iter - no_measures >= 0)
@@ -418,7 +416,75 @@ int main (int argc, char *argv[]) {
 
     int nbThreads = cv::getNumThreads();
     printf("Nombre de threads utilisés par OpenCV : %d\n", nbThreads);
-    
+
+    //cout << "Modèle du CPU : " << get_cpu_model() << endl;
+    // ********************************************************************** 
+
+    // Stockage des mesures dans un nouveau fichier CSV
+
+    vector<vector<string>> data;
+    vector<string> line;
+
+    line.push_back("reference");
+    line.push_back("Median");
+    line.push_back(to_string(mean_t_ref_median));
+    line.push_back(to_string(median_t_ref_median));
+    line.push_back(to_string(min_t_ref_median));
+    line.push_back(to_string(max_t_ref_median));
+    data.push_back(line);
+    line.clear();
+
+    line.push_back("reference");
+    line.push_back("Sobel");
+    line.push_back(to_string(mean_t_ref_grad));
+    line.push_back(to_string(median_t_ref_grad));
+    line.push_back(to_string(min_t_ref_grad));
+    line.push_back(to_string(max_t_ref_grad));
+    data.push_back(line);
+    line.clear();
+
+    line.push_back("mycode");
+    line.push_back("Median");
+    line.push_back(to_string(mean_t_mycode_median));
+    line.push_back(to_string(median_t_mycode_median));
+    line.push_back(to_string(min_t_mycode_median));
+    line.push_back(to_string(max_t_mycode_median));
+    data.push_back(line);
+    line.clear();
+
+    line.push_back("mycode");
+    line.push_back("Sobel");
+    line.push_back(to_string(mean_t_mycode_grad));
+    line.push_back(to_string(median_t_mycode_grad));
+    line.push_back(to_string(min_t_mycode_grad));
+    line.push_back(to_string(max_t_mycode_grad));
+    data.push_back(line);
+    line.clear();
+
+    // on ajoute les FPS et les Speedup
+    data.push_back({" "});
+
+    line.push_back("Median Speedup");
+    line.push_back("Sobel Speedup");
+    data.push_back(line);
+    line.clear();
+
+    line.push_back(to_string(mean_t_ref_median/mean_t_mycode_median));
+    line.push_back(to_string(mean_t_ref_grad/mean_t_mycode_grad));
+    data.push_back(line);
+    line.clear();
+
+    line.push_back("Reference pipeline FPS");
+    line.push_back("MyCode pipeline FPS");
+    data.push_back(line);
+    line.clear();
+
+    line.push_back(to_string(fps_ref));
+    line.push_back(to_string(fps_mycode));
+    data.push_back(line);
+    line.clear();
+
+    storeDataInCSV(data, n, nbThreads, to_string(rows) + " * " + to_string(cols));
   }
 
     

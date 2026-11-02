@@ -184,7 +184,7 @@ int main (int argc, char *argv[]) {
   // boucle de 100 itérations
   //
   int	n;
-  if (argc == 2)
+  if (argc >= 2)
   {
     n = atoi(argv[1]);	//taille de filtre médian - doit être variables !
     if ((n % 2) != 1 || n < 3)
@@ -216,7 +216,10 @@ int main (int argc, char *argv[]) {
   double    fps_mycode = 0.0;
 
   int im_blured_pix_diff = 0;
+  int nb_im_blured_pix_diff = 0;
   int im_grad_pix_diff = 0;
+  int nb_im_grad_pix_diff = 0;
+  double global_max_abs_diff = 0.0;
 
   double		mean_t_ref_median = 0.0;
   double    median_t_ref_median = 0.0;
@@ -346,6 +349,14 @@ int main (int argc, char *argv[]) {
     fps_ref += temp;
     fps_mycode += temp;
 
+    // on vérifie que les matrices résultantes produites par my_median et my_sobel sont bien correctes
+    im_blured_pix_diff = checkMatrix(im_blurred, im_blurred_my_code);
+    if (im_blured_pix_diff > 0) nb_im_blured_pix_diff++;
+    double local_max_abs_diff;
+    im_grad_pix_diff = checkMatrix(grad, grad_my_code, local_max_abs_diff);
+    if (im_grad_pix_diff > 0) nb_im_grad_pix_diff++;
+    if (local_max_abs_diff > global_max_abs_diff) global_max_abs_diff = local_max_abs_diff;
+
     key	= waitKey(1);
   }
   printf("========================================\n");
@@ -416,6 +427,11 @@ int main (int argc, char *argv[]) {
 
     printf(" Speedup median %f\n",mean_t_ref_median/mean_t_mycode_median);
     printf(" Speedup sobel %f\n",mean_t_ref_grad/mean_t_mycode_grad);
+
+    printf("Correctness : \n");
+    printf(" my_median : %f %% pixels with error\n", (((double)nb_im_blured_pix_diff)/no_measures)*100.0);
+    printf(" my_sobel : %f %% pixels with error\n", (((double)nb_im_grad_pix_diff)/no_measures)*100.0);
+    printf(" my_sobel maximum absolute difference on every frame : %f (%f %%)\n", global_max_abs_diff, (global_max_abs_diff/255.0)*100.0);
     
     printf("------------------\n");
 
@@ -424,6 +440,20 @@ int main (int argc, char *argv[]) {
 
     //cout << "Modèle du CPU : " << get_cpu_model() << endl;
     // ********************************************************************** 
+
+    // on vérifie si l'utilisateur veut générer un csv en ayant exécuter le programme avec une commande de la forme suivante :
+    // "./projet <n> 1"
+    if (argc >= 3)
+    {
+      if (atoi(argv[2]) != 1)
+      {
+        return 0;
+      }
+    }
+    else
+    {
+      return 0;
+    }
 
     // Stockage des mesures dans un nouveau fichier CSV
 
@@ -486,6 +516,26 @@ int main (int argc, char *argv[]) {
 
     line.push_back(to_string(fps_ref));
     line.push_back(to_string(fps_mycode));
+    data.push_back(line);
+    line.clear();
+
+    line.push_back("Correctness");
+    data.push_back(line);
+    line.clear();
+
+    line.push_back("my_median (% pixels with error)");
+    line.push_back(to_string((((double)nb_im_blured_pix_diff)/no_measures)*100.0));
+    data.push_back(line);
+    line.clear();
+
+    line.push_back("my_sobel (% pixels with error)");
+    line.push_back(to_string((((double)nb_im_grad_pix_diff)/no_measures)*100.0));
+    data.push_back(line);
+    line.clear();
+
+    line.push_back("my_sobel maximum absolute difference on every frame");
+    line.push_back(to_string(global_max_abs_diff));
+    line.push_back(to_string((global_max_abs_diff/255.0)*100.0) + "(%)");
     data.push_back(line);
     line.clear();
 

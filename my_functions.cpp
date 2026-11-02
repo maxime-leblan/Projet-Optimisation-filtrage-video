@@ -9,27 +9,65 @@ void my_sobel (Mat im_in, Mat im_out)
  int cols = im_in.cols; // width
  
  
-    for (int i = 1; i< cols-1; i++)
- 	for (int j = 1; j< rows-1; j++){
- 		int n = im_in.at<uchar>(j-1,i);
- 		int s = im_in.at<uchar>(j+1,i);
- 		int e = im_in.at<uchar>(j,i+1);
- 		int w = im_in.at<uchar>(j,i-1);
- 		int ne = im_in.at<uchar>(j-1,i+1);
- 		int nw = im_in.at<uchar>(j-1,i-1);
- 		int se = im_in.at<uchar>(j+1,i+1);
- 		int sw = im_in.at<uchar>(j+1,i-1);
- 		int c = im_in.at<uchar>(j,i);
+    for (int i = 0; i < cols; i++)
+ 	for (int j = 0; j < rows; j++){
+ 		// --- GESTION DU BORD VERTICAL (Lignes) ---
+		int r_m1, r_p1;
+		
+		if (j == 0) {
+			r_m1 = 1; // Miroir haut
+		} else {
+			r_m1 = j - 1;
+		}
+
+		if (j == rows - 1) {
+			r_p1 = rows - 2; // Miroir bas
+		} else {
+			r_p1 = j + 1;
+		}
+
+		// --- GESTION DU BORD HORIZONTAL (Colonnes) ---
+		int c_m1, c_p1;
+
+		if (i == 0) {
+			c_m1 = 1; // Miroir gauche
+		} else {
+			c_m1 = i - 1;
+		}
+
+		if (i == cols - 1) {
+			c_p1 = cols - 2; // Miroir droite
+		} else {
+			c_p1 = i + 1;
+		}
+
+		// --- LECTURE DES 9 PIXELS DE LA FENÊTRE ---
+		int nw = im_in.at<uchar>(r_m1, c_m1);
+		int n  = im_in.at<uchar>(r_m1, i);
+		int ne = im_in.at<uchar>(r_m1, c_p1);
+		int w  = im_in.at<uchar>(j, c_m1);
+		int c  = im_in.at<uchar>(j, i);
+		int e  = im_in.at<uchar>(j, c_p1);
+		int sw = im_in.at<uchar>(r_p1, c_m1);
+		int s  = im_in.at<uchar>(r_p1, i);
+		int se = im_in.at<uchar>(r_p1, c_p1);
  	
  	 	int gx = 2*e + ne + se - 2*w - sw - nw + 0*n + 0*c + 0*s;
  	 	int gy = 2*n + ne + nw - 2*s - sw - se + 0*w + 0*c + 0*e;
  	 	
- 	 	float g = abs(gx) + abs(gy);
- 	 	
- 	 	if (g>255)
- 	 		g=255;
- 	 	
- 	 	im_out.at<uchar>(j,i) = (uchar) (g);
+ 	 	// Saturation individuelle à 255 (comme convertScaleAbs d'OpenCV)
+		int abs_gx = abs(gx);
+		if (abs_gx > 255) abs_gx = 255;
+
+		int abs_gy = abs(gy);
+		if (abs_gy > 255) abs_gy = 255;
+		
+		float g = 0.5f * abs_gx + 0.5f * abs_gy;
+
+		if (g>255.0f)
+			g=255.0f;
+		
+		im_out.at<uchar>(j,i) = (uchar)(g);
  	 	
  	 	}
 
@@ -195,4 +233,35 @@ int checkMatrix(Mat im_out_ref, Mat im_out_mycode) {
     }
 
     return diff_count;
+}
+
+int checkMatrix(Mat im_out_ref, Mat im_out_mycode, double& max_abs_diff)
+{
+	// Vérification que les deux images ont les mêmes dimensions et le même type
+    if (im_out_ref.rows != im_out_mycode.rows || 
+        im_out_ref.cols != im_out_mycode.cols || 
+        im_out_ref.type() != im_out_mycode.type()) {
+        cerr << "Erreur : Les deux matrices doivent avoir les mêmes dimensions et le même type." << endl;
+        return -1;
+    }
+
+	int rows = im_out_ref.rows;
+    int cols = im_out_ref.cols;
+	int diff_sobel = 0;
+	int max_abs_diff_sobel = 0;
+
+	for (int r = 0; r < rows; r++) {
+		for (int c = 0; c < cols; c++) {
+			int diff = std::abs((int)im_out_ref.at<uchar>(r, c) - (int)im_out_mycode.at<uchar>(r, c));
+			if (diff > 0) {
+				diff_sobel++;
+				if (diff > max_abs_diff_sobel) {
+					max_abs_diff_sobel = diff;
+				}
+			}
+		}
+	}
+
+	max_abs_diff = max_abs_diff_sobel;
+	return diff_sobel;
 }

@@ -32,6 +32,13 @@ void storeDataInCSV(const vector<vector<string>>& data, int n, int nbOfThreads, 
 
 /**
  * Vérifie que les deux matrices passées en paramètre sont bien égale.
- * @return 0 si les matrices sont égales, un nombre > 0 sinon indiquant le nombre de pixels qui diffèrent.
+ * @return 0 si les matrices sont égales, un nombre > 0 indiquant le nombre de pixels qui diffèrent sinon.
  */
 int checkMatrix(Mat im_out_ref, Mat im_out_mycode);
+
+/**
+ * Vérifie que les deux matrices passées en paramètre sont bien égale.
+ * @param max_abs_diff stocke l'écart de valeur absolu et maximal entre les pixels des 2 matrices passées en paramètre
+ * @return 0 si les matrices sont égales, un nombre > 0 indiquant le nombre de pixels qui diffèrent sinon.
+ */
+int checkMatrix(Mat im_out_ref, Mat im_out_mycode, double& max_abs_diff);

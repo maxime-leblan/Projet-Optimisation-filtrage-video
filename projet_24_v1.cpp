@@ -107,7 +107,8 @@ int main (int argc, char *argv[]) {
   // on ouvre ici la lecture du flux vidÃ©o
   //----------------------------------------------
   // VideoCapture		cap(0); // le numÃ©ro 0 indique le point d'accÃ¨s Ã  la camÃ©ra 0 = > /dev/video0 : LIGNE D'ORIGINE
-  VideoCapture		cap(0, CAP_V4L2); // Ligne à exécuter quand on est sur WSL et non un linux natif (pour fluidifier le formatage des images)
+  // VideoCapture		cap(0, CAP_V4L2); // Ligne à exécuter quand on est sur WSL et non un linux natif (pour fluidifier le formatage des images)
+  VideoCapture cap("video_fleurs_vga.mp4"); // ligne à exécuter pour utiliser une vidéo au lieu de la caméra
   if(!cap.isOpened()){
     cout << "Errore"; return -1;
 
@@ -118,6 +119,7 @@ int main (int argc, char *argv[]) {
 
   // On peut choisir la dÃ©finition de l'image traitée - mais il faut respecter la resolution compatible avec la camera.
   // HD resolution  1 920 Ã— 1 080,
+  // HD : 1280 * 720, VGA : 640 * 480
   int			rows								  = 480;	
   int			cols								  = 640;
   cap.set(CAP_PROP_FRAME_WIDTH, cols);	 
@@ -245,6 +247,19 @@ int main (int argc, char *argv[]) {
   double		no_measures = iter - nbWarmIter;
 
   while(iter-- !=0 ){
+    
+    // mesure de temps d'exécution de cette partie :
+    if (iter - no_measures < 0) t0 = now_ns();
+    // acquisition d'une trame video - librairie OpenCV
+    cap.read(im_in);
+    if (iter - no_measures < 0)
+    {
+      t1 = now_ns();
+      temp = ((double)(t1 - t0))/(1000000.0);
+      fps_ref += temp;
+      fps_mycode += temp;
+    }
+
     // on vérifie si nous somme encore dans l'étape warm up du programme ou non
     if (iter - no_measures >= 0)
     {
@@ -252,13 +267,18 @@ int main (int argc, char *argv[]) {
       printf("On échauffe le programme %d \n", (int)(iter - no_measures));
       continue;
     }
-    // mesure de temps d'exécution de cette partie :
-    t0 = now_ns();
-    // acquisition d'une trame video - librairie OpenCV
-    cap.read(im_in);
+
+    
+    // La conditionnelle ci-dessous est à utiliser si on lit une vidéo .mp4 au lieu de la caméra
+    if (im_in.empty()) {
+      cap.set(CAP_PROP_POS_FRAMES, 0); // Rembobine au début de la vidéo
+      cap.read(im_in);                 // Relit la première trame
+    }
+      
 
   //conversion en niveau de gris - librairie OpenCV
   //on travaille en niveau de gris pour ce projet (simplifie la problématique)
+    t0 = now_ns();
     cvtColor(im_in, im_in_gray, COLOR_BGR2GRAY);
     t1 = now_ns();
     temp = ((double)(t1 - t0))/(1000000.0);

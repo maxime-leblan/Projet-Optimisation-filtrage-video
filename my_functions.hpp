@@ -29,3 +29,9 @@ string get_cpu_model();
  * @param data Liste contenant les lignes à ajouter dans le fichier CSV. Chaque élément de chaque ligne correspond au contenu d'une cellule du fichier CSV
  */
 void storeDataInCSV(const vector<vector<string>>& data, int n, int nbOfThreads, string resolution);
+
+/**
+ * Vérifie que les deux matrices passées en paramètre sont bien égale.
+ * @return 0 si les matrices sont égales, un nombre > 0 sinon indiquant le nombre de pixels qui diffèrent.
+ */
+int checkMatrix(Mat im_out_ref, Mat im_out_mycode);

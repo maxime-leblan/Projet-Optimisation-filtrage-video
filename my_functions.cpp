@@ -171,3 +171,28 @@ void storeDataInCSV(const std::vector<std::vector<std::string>>& data, int n, in
     file.close();
     std::cout << "Fichier " << filename << " sauvegardé avec succès." << std::endl;
 }
+
+int checkMatrix(Mat im_out_ref, Mat im_out_mycode) {
+    // Vérification que les deux images ont les mêmes dimensions et le même type
+    if (im_out_ref.rows != im_out_mycode.rows || 
+        im_out_ref.cols != im_out_mycode.cols || 
+        im_out_ref.type() != im_out_mycode.type()) {
+        cerr << "Erreur : Les deux matrices doivent avoir les mêmes dimensions et le même type." << endl;
+        return -1;
+    }
+
+    int diff_count = 0;
+    int rows = im_out_ref.rows;
+    int cols = im_out_ref.cols;
+
+    // Parcours pixel par pixel
+    for (int r = 0; r < rows; r++) {
+        for (int c = 0; c < cols; c++) {
+            if (im_out_ref.at<uchar>(r, c) != im_out_mycode.at<uchar>(r, c)) {
+                diff_count++;
+            }
+        }
+    }
+
+    return diff_count;
+}

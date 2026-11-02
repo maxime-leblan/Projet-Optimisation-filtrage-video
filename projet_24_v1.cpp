@@ -137,12 +137,14 @@ int main (int argc, char *argv[]) {
   Mat3b	im_in;			// couleur (3cannaux)
   Mat	im_in_gray;		// niveau de gris (1 cannal)
   Mat	im_blurred;		// niveau de gris (1 cannal)
+  Mat	im_blurred_my_code;
 
   Mat 	grad_x;
   Mat	grad_y;
   Mat	abs_grad_y;
   Mat	abs_grad_x;
   Mat	grad;
+  Mat grad_my_code;
 
   // variable contenant les paramÃ¨tres des images ou d'Ã©xÃ©cution  
   int	ddepth	  = CV_16S;
@@ -212,6 +214,9 @@ int main (int argc, char *argv[]) {
 
   double    fps_ref = 0.0;
   double    fps_mycode = 0.0;
+
+  int im_blured_pix_diff = 0;
+  int im_grad_pix_diff = 0;
 
   double		mean_t_ref_median = 0.0;
   double    median_t_ref_median = 0.0;
@@ -307,8 +312,8 @@ int main (int argc, char *argv[]) {
     t0 = now_ns();
     // **********************************************************************
     // allocation des matrices contenant les images intermédiaires
-    Mat	im_blurred_my_code = cv::Mat(rows, cols, CV_8UC1);		// niveau de gris (1 cannal)
-    Mat grad_my_code = cv::Mat(rows, cols, CV_8UC1);
+    im_blurred_my_code = cv::Mat(rows, cols, CV_8UC1);		// niveau de gris (1 cannal)
+    grad_my_code = cv::Mat(rows, cols, CV_8UC1);
     my_median (im_in_gray, im_blurred_my_code,n);
     t1 = now_ns();
     temp  = ((double)(t1 - t0))/(1000000.0);

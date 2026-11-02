@@ -108,7 +108,7 @@ int main (int argc, char *argv[]) {
   //----------------------------------------------
   // VideoCapture		cap(0); // le numÃ©ro 0 indique le point d'accÃ¨s Ã  la camÃ©ra 0 = > /dev/video0 : LIGNE D'ORIGINE
   // VideoCapture		cap(0, CAP_V4L2); // Ligne à exécuter quand on est sur WSL et non un linux natif (pour fluidifier le formatage des images)
-  VideoCapture cap("video_fleurs_vga.mp4"); // ligne à exécuter pour utiliser une vidéo au lieu de la caméra
+  VideoCapture cap("video_fleurs_vga.mp4"); // ligne à exécuter pour utiliser une vidéo au lieu de la caméra (prendre la vidéo "video_fleurs_vga.mp4" pour la résolution VGA, et la vidéo "video_fleurs.mp4" pour celle en HD)
   if(!cap.isOpened()){
     cout << "Errore"; return -1;
 

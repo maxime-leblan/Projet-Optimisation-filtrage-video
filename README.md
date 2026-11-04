@@ -29,8 +29,8 @@ sudo chmod 666 /dev/video0
 Si le terminal n'affiche ensuite aucun message d'erreur, c'est que l'octroyation des droits a bel et bien fonctionné.
 Il ne vous reste plus qu'à compiler le projet puis à l'exécuter : 
 ```
-g++ -O0 -g projet_24_v1.cpp my_functions.cpp -o projet $(pkg-config --cflags --libs opencv4) -lm
-./projet <NOMBRE>
+g++ -O0 -g projet_24_v1.cpp my_functions.cpp mesure_functions.cpp -o projet $(pkg-config --cflags --libs opencv4) -lm
+./projet <NOMBRE> <'1' -> GENERE UN CSV>
 ```
 
 **/!\ ATTENTION** : Les opérations d'associations de l'ID USB de votre caméra avec une session WSL et l'octroyation des droits sont valables uniquement tant que la session (et donc le terminal) WSL reste ouverte. A chaque nouveau redémarrage, il est nécessaire d'effectuer à nouveau ces étapes.

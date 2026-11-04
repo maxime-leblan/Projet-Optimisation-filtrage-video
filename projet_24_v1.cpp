@@ -43,6 +43,7 @@
 #include "opencv2/highgui.hpp"
 
 #include "my_functions.hpp"
+#include "mesure_functions.hpp"
   
 /* -------------------------------------------------------------------
  * Deinition des "namespace" pour raccourcir cv::, std::, ou autre

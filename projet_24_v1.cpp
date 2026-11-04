@@ -217,6 +217,7 @@ int main (int argc, char *argv[]) {
 
   double    fps_ref = 0.0;
   double    fps_mycode = 0.0;
+  double    t_mycode_pipeline = 0.0;
 
   int im_blured_pix_diff = 0;
   int nb_im_blured_pix_diff = 0;
@@ -389,6 +390,8 @@ int main (int argc, char *argv[]) {
   sort(t_mycode_grad_measures.begin(), t_mycode_grad_measures.end());
 
   // On calcule les statistiques de chaque programme
+    t_mycode_pipeline = fps_mycode / no_measures;
+
     fps_ref = no_measures / (fps_ref / 1000.0);
     fps_mycode = no_measures / (fps_mycode / 1000.0);
 
@@ -448,6 +451,7 @@ int main (int argc, char *argv[]) {
 
     printf(" Speedup median %f\n",mean_t_ref_median/mean_t_mycode_median);
     printf(" Speedup sobel %f\n",mean_t_ref_grad/mean_t_mycode_grad);
+    printf(" MyCode Pipeline execution time (ms/img) %f\n",t_mycode_pipeline);
 
     printf("Correctness : \n");
     printf(" my_median : %f %% pixels with error\n", (((double)nb_im_blured_pix_diff)/no_measures)*100.0);
@@ -522,11 +526,13 @@ int main (int argc, char *argv[]) {
 
     line.push_back("Median Speedup");
     line.push_back("Sobel Speedup");
+    line.push_back("MyCode Pipeline execution time (ms/img)");
     data.push_back(line);
     line.clear();
 
     line.push_back(to_string(mean_t_ref_median/mean_t_mycode_median));
     line.push_back(to_string(mean_t_ref_grad/mean_t_mycode_grad));
+    line.push_back(to_string(t_mycode_pipeline));
     data.push_back(line);
     line.clear();
 

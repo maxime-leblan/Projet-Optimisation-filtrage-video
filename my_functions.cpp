@@ -73,6 +73,112 @@ void my_sobel (Mat im_in, Mat im_out)
 
 };
 
+void sobel_pixel_border_v1_stg0(Mat im_in, Mat im_out, int i, int j, int rows, int cols)
+{
+	// --- GESTION DU BORD VERTICAL (Lignes) ---
+	int r_m1, r_p1;
+	
+	if (i == 0) {
+		r_m1 = 1; // Miroir haut
+	} else {
+		r_m1 = i - 1;
+	}
+
+	if (i == rows - 1) {
+		r_p1 = rows - 2; // Miroir bas
+	} else {
+		r_p1 = i + 1;
+	}
+
+	// --- GESTION DU BORD HORIZONTAL (Colonnes) ---
+	int c_m1, c_p1;
+
+	if (j == 0) {
+		c_m1 = 1; // Miroir gauche
+	} else {
+		c_m1 = j - 1;
+	}
+
+	if (j == cols - 1) {
+		c_p1 = cols - 2; // Miroir droite
+	} else {
+		c_p1 = j + 1;
+	}
+
+	// --- LECTURE DES 9 PIXELS DE LA FENÊTRE ---
+	int nw = im_in.at<uchar>(r_m1, c_m1);
+	int n  = im_in.at<uchar>(r_m1, j);
+	int ne = im_in.at<uchar>(r_m1, c_p1);
+	int w  = im_in.at<uchar>(i, c_m1);
+	int e  = im_in.at<uchar>(i, c_p1);
+	int sw = im_in.at<uchar>(r_p1, c_m1);
+	int s  = im_in.at<uchar>(r_p1, j);
+	int se = im_in.at<uchar>(r_p1, c_p1);
+
+	int gx = (e << 1) + ne + se - (w << 1) - sw - nw;
+	int gy = (n << 1) + ne + nw - (s << 1) - sw - se;
+
+	int abs_gx = abs(gx);
+	if (abs_gx > 255) abs_gx = 255;
+
+	int abs_gy = abs(gy);
+	if (abs_gy > 255) abs_gy = 255;
+
+	int g = (abs_gx + abs_gy) >> 1;
+	if (g > 255) g = 255;
+	
+	im_out.at<uchar>(i,j) = (uchar)(g);
+}
+
+void my_sobel_opti_v1_stg0(Mat im_in, Mat im_out)
+{
+	int rows = im_in.rows; // height
+ 	int cols = im_in.cols; // width
+ 
+    // 1. CŒUR DE L'IMAGE (99% des pixels) - AUCUN TEST 'IF'
+    for (int i = 1; i < cols - 1; i++)
+    {
+        for (int j = 1; j < rows - 1; j++)
+        {
+            // Directement j-1, j, j+1 et i-1, i, i+1 sans variables intermédiaires
+            int nw = im_in.at<uchar>(j - 1, i - 1);
+            int n  = im_in.at<uchar>(j - 1, i);
+            int ne = im_in.at<uchar>(j - 1, i + 1);
+            int w  = im_in.at<uchar>(j, i - 1);
+            int e  = im_in.at<uchar>(j, i + 1);
+            int sw = im_in.at<uchar>(j + 1, i - 1);
+            int s  = im_in.at<uchar>(j + 1, i);
+            int se = im_in.at<uchar>(j + 1, i + 1);
+
+            int gx = (e << 1) + ne + se - (w << 1) - sw - nw;
+            int gy = (n << 1) + ne + nw - (s << 1) - sw - se;
+
+            int abs_gx = abs(gx);
+            if (abs_gx > 255) abs_gx = 255;
+
+            int abs_gy = abs(gy);
+            if (abs_gy > 255) abs_gy = 255;
+
+            int g = (abs_gx + abs_gy) >> 1;
+            if (g > 255) g = 255;
+
+            im_out.at<uchar>(j, i) = (uchar)g;
+        }
+    }
+
+	// GESTION SEPARÉE DES BORDS (Seulement si nécessaire)
+    // Bords Haut & Bas
+    for (int i = 0; i < cols; i++) {
+        sobel_pixel_border_v1_stg0(im_in, im_out, 0, i, rows, cols);        // Ligne haut
+        sobel_pixel_border_v1_stg0(im_in, im_out, rows - 1, i, rows, cols); // Ligne bas
+    }
+    // Bords Gauche & Droite
+    for (int j = 1; j < rows - 1; j++) {
+        sobel_pixel_border_v1_stg0(im_in, im_out, j, 0, rows, cols);        // Colonne gauche
+        sobel_pixel_border_v1_stg0(im_in, im_out, j, cols - 1, rows, cols); // Colonne droite
+    }
+}
+
 void my_median (Mat im_in, Mat im_out, int n)
 {
 

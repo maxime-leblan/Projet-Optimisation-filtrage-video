@@ -1,0 +1,15 @@
+Intel(R) Core(TM) i7-14700HX;n : 3;Resolution : 480 * 640;Threads : 1
+Type;Nom;Moyenne (ms);Mediane (ms);Min (ms);Max (ms)
+reference;Median;0.124828;0.118391;0.101802;0.253343
+reference;Sobel;0.313481;0.309034;0.255016;0.539868
+mycode;Median;79.382693;79.093892;76.470022;85.196648
+mycode;Sobel;5.331059;5.279567;4.685444;6.623835
+ 
+Median Speedup;Sobel Speedup;MyCode Pipeline execution time (ms/img)
+0.001572;0.058803;85.423838
+Reference pipeline FPS;MyCode pipeline FPS
+870.780592;11.706334
+Correctness
+my_median (% pixels with error);0.000000
+my_sobel (% pixels with error);100.000000
+my_sobel maximum absolute difference on every frame;255.000000;100.000000(%)

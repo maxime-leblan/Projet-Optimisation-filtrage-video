@@ -350,7 +350,7 @@ int main (int argc, char *argv[]) {
     // mesure de temps d'exécution de cette partie :
     t0 = now_ns();
     // ********************************************************************** 
-      my_sobel(im_blurred_my_code, grad_my_code);
+      my_sobel_opti_v4_stg0(im_blurred_my_code, grad_my_code);
 
     // **********************************************************************
     // mesure de temps d'exécution de cette partie :

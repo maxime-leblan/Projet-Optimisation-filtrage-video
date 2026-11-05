@@ -1,0 +1,15 @@
+Jetson;n : 3;Resolution : 480 * 640;Threads : 1;;
+Type;Nom;Moyenne (ms);Mediane (ms);Min (ms);Max (ms)
+reference;Median;0.819897;0.839392;0.448704;1.498976
+reference;Sobel;3.670147;3.885504;1.828544;5.030400
+mycode;Median;89.937977;94.747904;65.841088;100.793024
+mycode;Sobel;20.165580;20.062432;19.545600;22.739104
+ ;;;;;
+Median Speedup;Sobel Speedup;MyCode Pipeline execution time (ms/img);;;
+0.009116;0.182001;114.751163;;;
+Reference pipeline FPS;MyCode pipeline FPS;;;;
+109.437321;8.714509;;;;
+Correctness;;;;;
+my_median (% pixels with error);0.000000;;;;
+my_sobel (% pixels with error);100.000000;;;;
+my_sobel maximum absolute difference on every frame;1.000000;0.392157(%);;;

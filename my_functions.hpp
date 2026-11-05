@@ -53,5 +53,8 @@ void sort3(uchar &a, uchar &b, uchar &c);
  * @param col coordonnée de la colonne
  */
 void median_pixel_border_m2_3t3_stg0(Mat im_in, Mat im_out, int row, int col, int rows, int cols);
+void median_pixel_border_m3_stg0(Mat im_in, Mat im_out, int row, int col, int rows, int cols);
 
 void my_median_opti_m2_3t3_stg0(Mat im_in, Mat im_out);
+void my_median_opti_m3_stg0(Mat im_in, Mat im_out);
+void my_median_opti_stg0(Mat im_in, Mat im_out, int n);

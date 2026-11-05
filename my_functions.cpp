@@ -496,6 +496,67 @@ void median_pixel_border_m2_3t3_stg0(Mat im_in, Mat im_out, int row, int col, in
     im_out.at<uchar>(row, col) = w5;
 }
 
+void median_pixel_border_m3_stg0(Mat im_in, Mat im_out, int row, int col, int rows, int cols)
+{
+    // --- GESTION DU BORD VERTICAL (Lignes) ---
+    int r_m1, r_p1;
+
+    if (row == 0) {
+        r_m1 = 0; // Ligne haut dupliquée (BORDER_REPLICATE)
+    } else {
+        r_m1 = row - 1;
+    }
+
+    if (row == rows - 1) {
+        r_p1 = rows - 1; // Ligne bas dupliquée
+    } else {
+        r_p1 = row + 1;
+    }
+
+    // --- GESTION DU BORD HORIZONTAL (Colonnes) ---
+    int c_m1, c_p1;
+
+    if (col == 0) {
+        c_m1 = 0; // Colonne gauche dupliquée (BORDER_REPLICATE)
+    } else {
+        c_m1 = col - 1;
+    }
+
+    if (col == cols - 1) {
+        c_p1 = cols - 1; // Colonne droite dupliquée
+    } else {
+        c_p1 = col + 1;
+    }
+
+    // --- LECTURE DES 9 PIXELS DE LA FENÊTRE ---
+    uchar c0_0 = im_in.at<uchar>(r_m1, c_m1);
+    uchar c0_1 = im_in.at<uchar>(row,  c_m1);
+    uchar c0_2 = im_in.at<uchar>(r_p1, c_m1);
+
+    uchar c1_0 = im_in.at<uchar>(r_m1, col);
+    uchar c1_1 = im_in.at<uchar>(row,  col);
+    uchar c1_2 = im_in.at<uchar>(r_p1, col);
+
+    uchar c2_0 = im_in.at<uchar>(r_m1, c_p1);
+    uchar c2_1 = im_in.at<uchar>(row,  c_p1);
+    uchar c2_2 = im_in.at<uchar>(r_p1, c_p1);
+
+    // --- RÉSEAU DE TRI M3 (15 CE) ---
+    sort3(c0_0, c0_1, c0_2);
+    sort3(c1_0, c1_1, c1_2);
+    sort3(c2_0, c2_1, c2_2);
+
+    sort3(c0_0, c1_0, c2_0);
+    sort3(c0_1, c1_1, c2_1);
+    sort3(c0_2, c1_2, c2_2);
+
+    uchar med = c1_1;
+    sort3(c0_2, med, c2_0);
+
+    // Écriture du résultat
+    im_out.at<uchar>(row, col) = med;
+}
+
 void my_median_opti_m2_3t3_stg0(Mat im_in, Mat im_out)
 {
     int rows = im_in.rows;
@@ -547,3 +608,65 @@ void my_median_opti_m2_3t3_stg0(Mat im_in, Mat im_out)
         median_pixel_border_m2_3t3_stg0(im_in, im_out, j, cols - 1, rows, cols);
     }
 }
+
+void my_median_opti_m3_stg0(Mat im_in, Mat im_out)
+{
+    int rows = im_in.rows;
+    int cols = im_in.cols;
+
+    // 1. CŒUR DE L'IMAGE - BALAYAGE PAR FENÊTRE GLISSANTE (M3)
+    for (int j = 1; j < rows - 1; j++)
+    {
+        // Amorçage (Priming) : Tri des colonnes 0 et 1 (6 CE, 6 loads)
+        uchar c0_0 = im_in.at<uchar>(j - 1, 0);
+        uchar c0_1 = im_in.at<uchar>(j,     0);
+        uchar c0_2 = im_in.at<uchar>(j + 1, 0);
+        sort3(c0_0, c0_1, c0_2);
+
+        uchar c1_0 = im_in.at<uchar>(j - 1, 1);
+        uchar c1_1 = im_in.at<uchar>(j,     1);
+        uchar c1_2 = im_in.at<uchar>(j + 1, 1);
+        sort3(c1_0, c1_1, c1_2);
+
+        // Boucle principale le long de la ligne
+        for (int i = 1; i < cols - 1; i++)
+        {
+            // Lecture et tri de la seule NOUVELLE colonne entrante (i + 1) : 3 CE + 3 loads
+            uchar c2_0 = im_in.at<uchar>(j - 1, i + 1);
+            uchar c2_1 = im_in.at<uchar>(j,     i + 1);
+            uchar c2_2 = im_in.at<uchar>(j + 1, i + 1);
+            sort3(c2_0, c2_1, c2_2);
+
+            // Tri des 3 lignes (Min, Med, Max des colonnes c0, c1, c2) : 9 CE
+            uchar r1_0 = c0_0, r1_1 = c1_0, r1_2 = c2_0;
+            sort3(r1_0, r1_1, r1_2);
+
+            uchar r2_0 = c0_1, r2_1 = c1_1, r2_2 = c2_1;
+            sort3(r2_0, r2_1, r2_2);
+
+            uchar r3_0 = c0_2, r3_1 = c1_2, r3_2 = c2_2;
+            sort3(r3_0, r3_1, r3_2);
+
+            // Tri de la diagonale secondaire : 3 CE
+            uchar med = r2_1;
+            sort3(r1_2, med, r3_0);
+
+            im_out.at<uchar>(j, i) = med;
+
+            // Décalage de la fenêtre dans les registres (0 accès mémoire)
+            c0_0 = c1_0; c0_1 = c1_1; c0_2 = c1_2;
+            c1_0 = c2_0; c1_1 = c2_1; c1_2 = c2_2;
+        }
+    }
+
+    // 2. GESTION DES BORDS
+    for (int i = 0; i < cols; i++) {
+        median_pixel_border_m3_stg0(im_in, im_out, 0, i, rows, cols);
+        median_pixel_border_m3_stg0(im_in, im_out, rows - 1, i, rows, cols);
+    }
+    for (int j = 1; j < rows - 1; j++) {
+        median_pixel_border_m3_stg0(im_in, im_out, j, 0, rows, cols);
+        median_pixel_border_m3_stg0(im_in, im_out, j, cols - 1, rows, cols);
+    }
+}
+

@@ -42,4 +42,16 @@ void sobel_pixel_border_v3_stg0(Mat im_in, Mat im_out, int i, int j, int rows, i
 void my_sobel_opti_v1_stg0(Mat , Mat );
 void my_sobel_opti_v3_stg0(Mat im_in, Mat im_out);
 void my_sobel_opti_v4_stg0(Mat im_in, Mat im_out);
-void my_median_opti_v3_stg0(Mat, Mat, int );
+
+void CE(uchar &a, uchar &b);
+
+void sort3(uchar &a, uchar &b, uchar &c);
+
+/**
+ * Applique le filtre médiane sur le pixel de coordonnées (row, col) en gérant le cas où le pixel se trouve sur le bord de l'image
+ * @param row coordonnée de la ligne
+ * @param col coordonnée de la colonne
+ */
+void median_pixel_border_m2_3t3_stg0(Mat im_in, Mat im_out, int row, int col, int rows, int cols);
+
+void my_median_opti_m2_3t3_stg0(Mat im_in, Mat im_out);

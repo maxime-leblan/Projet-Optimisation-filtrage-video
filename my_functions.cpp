@@ -422,3 +422,128 @@ void my_median (Mat im_in, Mat im_out, int n)
 	}
 };
 
+void CE(uchar &a, uchar &b) {
+    if (a > b) {
+        uchar tmp = a;
+        a = b;
+        b = tmp;
+    }
+}
+
+void sort3(uchar &a, uchar &b, uchar &c) {
+    CE(a, b);
+    CE(b, c);
+    CE(a, b);
+}
+
+void median_pixel_border_m2_3t3_stg0(Mat im_in, Mat im_out, int row, int col, int rows, int cols)
+{
+    // --- GESTION DU BORD VERTICAL (Conforme à OpenCV BORDER_REPLICATE) ---
+    int r_m1, r_p1;
+
+    if (row == 0) {
+        r_m1 = 0; // Ligne haut dupliquée (0 au lieu de 1)
+    } else {
+        r_m1 = row - 1;
+    }
+
+    if (row == rows - 1) {
+        r_p1 = rows - 1; // Ligne bas dupliquée
+    } else {
+        r_p1 = row + 1;
+    }
+
+    // --- GESTION DU BORD HORIZONTAL (Conforme à OpenCV BORDER_REPLICATE) ---
+    int c_m1, c_p1;
+
+    if (col == 0) {
+        c_m1 = 0; // Colonne gauche dupliquée (0 au lieu de 1)
+    } else {
+        c_m1 = col - 1;
+    }
+
+    if (col == cols - 1) {
+        c_p1 = cols - 1; // Colonne droite dupliquée
+    } else {
+        c_p1 = col + 1;
+    }
+
+    // --- LECTURE DES 9 PIXELS DE LA FENÊTRE ---
+    uchar w1 = im_in.at<uchar>(r_m1, c_m1);
+    uchar w2 = im_in.at<uchar>(r_m1, col);
+    uchar w3 = im_in.at<uchar>(r_m1, c_p1);
+    uchar w4 = im_in.at<uchar>(row,  c_m1);
+    uchar w5 = im_in.at<uchar>(row,  col);
+    uchar w6 = im_in.at<uchar>(row,  c_p1);
+    uchar w7 = im_in.at<uchar>(r_p1, c_m1);
+    uchar w8 = im_in.at<uchar>(r_p1, col);
+    uchar w9 = im_in.at<uchar>(r_p1, c_p1);
+
+    // Étape 1 : Tri des 3 lignes (9 CE)
+    sort3(w1, w2, w3);
+    sort3(w4, w5, w6);
+    sort3(w7, w8, w9);
+
+    // Étape 2 : Tri des 3 colonnes (9 CE)
+    sort3(w1, w4, w7);
+    sort3(w2, w5, w8);
+    sort3(w3, w6, w9);
+
+    // Étape 3 : Tri de l'anti-diagonale (3 CE)
+    sort3(w3, w5, w7);
+
+    // Écriture de la médiane au centre (w5)
+    im_out.at<uchar>(row, col) = w5;
+}
+
+void my_median_opti_m2_3t3_stg0(Mat im_in, Mat im_out)
+{
+    int rows = im_in.rows;
+    int cols = im_in.cols;
+
+    // 1. CŒUR DE L'IMAGE (99% des pixels) - AUCUN TEST 'IF'
+    for (int i = 1; i < cols - 1; i++)
+    {
+        for (int j = 1; j < rows - 1; j++)
+        {
+            // Lecture des 9 pixels de la fenêtre 3x3
+            uchar w1 = im_in.at<uchar>(j - 1, i - 1);
+            uchar w2 = im_in.at<uchar>(j - 1, i);
+            uchar w3 = im_in.at<uchar>(j - 1, i + 1);
+            uchar w4 = im_in.at<uchar>(j,     i - 1);
+            uchar w5 = im_in.at<uchar>(j,     i);
+            uchar w6 = im_in.at<uchar>(j,     i + 1);
+            uchar w7 = im_in.at<uchar>(j + 1, i - 1);
+            uchar w8 = im_in.at<uchar>(j + 1, i);
+            uchar w9 = im_in.at<uchar>(j + 1, i + 1);
+
+            // Étape 1 : Tri des 3 lignes (9 CE)
+            sort3(w1, w2, w3);
+            sort3(w4, w5, w6);
+            sort3(w7, w8, w9);
+
+            // Étape 2 : Tri des 3 colonnes (9 CE)
+            sort3(w1, w4, w7);
+            sort3(w2, w5, w8);
+            sort3(w3, w6, w9);
+
+            // Étape 3 : Tri de l'anti-diagonale (3 CE)
+            sort3(w3, w5, w7);
+
+            // La valeur médiane se trouve au centre w5
+            im_out.at<uchar>(j, i) = w5;
+        }
+    }
+
+    // 2. GESTION SEPARÉE DES BORDS DE L'IMAGE
+    // Bords Haut & Bas (ligne 0 et rows-1)
+    for (int i = 0; i < cols; i++) {
+        median_pixel_border_m2_3t3_stg0(im_in, im_out, 0, i, rows, cols);
+        median_pixel_border_m2_3t3_stg0(im_in, im_out, rows - 1, i, rows, cols);
+    }
+    // Bords Gauche & Droite (colonne 0 et cols-1)
+    for (int j = 1; j < rows - 1; j++) {
+        median_pixel_border_m2_3t3_stg0(im_in, im_out, j, 0, rows, cols);
+        median_pixel_border_m2_3t3_stg0(im_in, im_out, j, cols - 1, rows, cols);
+    }
+}

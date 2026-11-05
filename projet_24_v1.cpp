@@ -339,7 +339,7 @@ int main (int argc, char *argv[]) {
     // allocation des matrices contenant les images intermédiaires
     im_blurred_my_code = cv::Mat(rows, cols, CV_8UC1);		// niveau de gris (1 cannal)
     grad_my_code = cv::Mat(rows, cols, CV_8UC1);
-    my_median (im_in_gray, im_blurred_my_code,n);
+    my_median_opti_m2_3t3_stg0(im_in_gray, im_blurred_my_code);
     t1 = now_ns();
     temp  = ((double)(t1 - t0))/(1000000.0);
     t_mycode_median_measures.push_back(temp);
@@ -350,7 +350,7 @@ int main (int argc, char *argv[]) {
     // mesure de temps d'exécution de cette partie :
     t0 = now_ns();
     // ********************************************************************** 
-      my_sobel_opti_v4_stg0(im_blurred_my_code, grad_my_code);
+      my_sobel_opti_v1_stg0(im_blurred_my_code, grad_my_code);
 
     // **********************************************************************
     // mesure de temps d'exécution de cette partie :

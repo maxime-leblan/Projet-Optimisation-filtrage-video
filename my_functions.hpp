@@ -43,6 +43,8 @@ void my_sobel_opti_v1_stg0(Mat , Mat );
 void my_sobel_opti_v3_stg0(Mat im_in, Mat im_out);
 void my_sobel_opti_v4_stg0(Mat im_in, Mat im_out);
 
+void my_sobel_opti_v3_stg1(Mat im_in, Mat im_out);
+
 void CE(uchar &a, uchar &b);
 
 void sort3(uchar &a, uchar &b, uchar &c);
@@ -54,6 +56,8 @@ void sort3(uchar &a, uchar &b, uchar &c);
  */
 void median_pixel_border_m2_3t3_stg0(Mat im_in, Mat im_out, int row, int col, int rows, int cols);
 void median_pixel_border_m3_stg0(Mat im_in, Mat im_out, int row, int col, int rows, int cols);
+
+int clamp_coord(int val, int max_val);
 
 void my_median_opti_m2_3t3_stg0(Mat im_in, Mat im_out);
 void my_median_opti_m3_stg0(Mat im_in, Mat im_out);

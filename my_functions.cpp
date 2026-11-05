@@ -355,6 +355,131 @@ void my_sobel_opti_v4_stg0(Mat im_in, Mat im_out)
     }
 }
 
+void my_sobel_opti_v3_stg1(Mat im_in, Mat im_out)
+{
+	int rows = im_in.rows;
+    int cols = im_in.cols;
+
+    // 1. CŒUR DE L'IMAGE - PARCOURS STRICT COLONNE PAR COLONNE (i externe, j interne déroulé par 4)
+    for (int i = 1; i < cols - 1; i++)
+    {
+        int j = 1;
+
+        // Boucle interne déroulée par facteur 4 sur l'axe vertical (j, j+1, j+2, j+3)
+        for (; j <= rows - 5; j += 4)
+        {
+            // --- LECTURE EN MÉMOIRE DE 6 LIGNES SUR 3 COLONNES (i-1, i, i+1) ---
+            // Colonne gauche (i - 1)
+            int l_m1 = im_in.at<uchar>(j - 1, i - 1);
+            int l_0  = im_in.at<uchar>(j,     i - 1);
+            int l_1  = im_in.at<uchar>(j + 1, i - 1);
+            int l_2  = im_in.at<uchar>(j + 2, i - 1);
+            int l_3  = im_in.at<uchar>(j + 3, i - 1);
+            int l_4  = im_in.at<uchar>(j + 4, i - 1);
+
+            // Colonne centrale (i)
+            int c_m1 = im_in.at<uchar>(j - 1, i);
+            int c_0  = im_in.at<uchar>(j,     i);
+            int c_1  = im_in.at<uchar>(j + 1, i);
+            int c_2  = im_in.at<uchar>(j + 2, i);
+            int c_3  = im_in.at<uchar>(j + 3, i);
+            int c_4  = im_in.at<uchar>(j + 4, i);
+
+            // Colonne droite (i + 1)
+            int r_m1 = im_in.at<uchar>(j - 1, i + 1);
+            int r_0  = im_in.at<uchar>(j,     i + 1);
+            int r_1  = im_in.at<uchar>(j + 1, i + 1);
+            int r_2  = im_in.at<uchar>(j + 2, i + 1);
+            int r_3  = im_in.at<uchar>(j + 3, i + 1);
+            int r_4  = im_in.at<uchar>(j + 4, i + 1);
+
+            // --- RENAMING & RÉASSOCIATION SOBEL V3 (Pixel 0 : ligne j) ---
+            int A0 = r_1 - l_m1;
+            int B0 = r_m1 - l_1;
+            int C0 = r_0 - l_0;
+            int D0 = c_1 - c_m1;
+
+            // --- RENAMING & RÉASSOCIATION SOBEL V3 (Pixel 1 : ligne j+1) ---
+            int A1 = r_2 - l_0;
+            int B1 = r_0 - l_2;
+            int C1 = r_1 - l_1;
+            int D1 = c_2 - c_0;
+
+            // --- RENAMING & RÉASSOCIATION SOBEL V3 (Pixel 2 : ligne j+2) ---
+            int A2 = r_3 - l_1;
+            int B2 = r_1 - l_3;
+            int C2 = r_2 - l_2;
+            int D2 = c_3 - c_1;
+
+            // --- RENAMING & RÉASSOCIATION SOBEL V3 (Pixel 3 : ligne j+3) ---
+            int A3 = r_4 - l_2;
+            int B3 = r_2 - l_4;
+            int C3 = r_3 - l_3;
+            int D3 = c_4 - c_2;
+
+            // --- ACCUMULATEURS SÉPARÉS (4 pipelines virtuels) ---
+            int gx0 = A0 + B0 + (C0 << 1);
+            int gy0 = A0 - B0 + (D0 << 1);
+
+            int gx1 = A1 + B1 + (C1 << 1);
+            int gy1 = A1 - B1 + (D1 << 1);
+
+            int gx2 = A2 + B2 + (C2 << 1);
+            int gy2 = A2 - B2 + (D2 << 1);
+
+            int gx3 = A3 + B3 + (C3 << 1);
+            int gy3 = A3 - B3 + (D3 << 1);
+
+            // --- SATURATION BRANCH-FREE (std::min) ---
+            int g0 = std::min((std::min(std::abs(gx0), 255) + std::min(std::abs(gy0), 255)) >> 1, 255);
+            int g1 = std::min((std::min(std::abs(gx1), 255) + std::min(std::abs(gy1), 255)) >> 1, 255);
+            int g2 = std::min((std::min(std::abs(gx2), 255) + std::min(std::abs(gy2), 255)) >> 1, 255);
+            int g3 = std::min((std::min(std::abs(gx3), 255) + std::min(std::abs(gy3), 255)) >> 1, 255);
+
+            // Écriture des 4 pixels le long de la colonne i
+            im_out.at<uchar>(j,     i) = (uchar)g0;
+            im_out.at<uchar>(j + 1, i) = (uchar)g1;
+            im_out.at<uchar>(j + 2, i) = (uchar)g2;
+            im_out.at<uchar>(j + 3, i) = (uchar)g3;
+        }
+
+        // Boucle de reste sur la colonne i pour les lignes restantes
+        for (; j < rows - 1; j++)
+        {
+            int nw = im_in.at<uchar>(j - 1, i - 1);
+            int n  = im_in.at<uchar>(j - 1, i);
+            int ne = im_in.at<uchar>(j - 1, i + 1);
+            int w  = im_in.at<uchar>(j,     i - 1);
+            int e  = im_in.at<uchar>(j,     i + 1);
+            int sw = im_in.at<uchar>(j + 1, i - 1);
+            int s  = im_in.at<uchar>(j + 1, i);
+            int se = im_in.at<uchar>(j + 1, i + 1);
+
+            int A = se - nw;
+            int B = ne - sw;
+            int C = e  - w;
+            int D = s  - n;
+
+            int gx = A + B + (C << 1);
+            int gy = A - B + (D << 1);
+
+            int g = std::min((std::min(std::abs(gx), 255) + std::min(std::abs(gy), 255)) >> 1, 255);
+
+            im_out.at<uchar>(j, i) = (uchar)g;
+        }
+    }
+
+    // 2. GESTION DES BORDS DE L'IMAGE
+    for (int i = 0; i < cols; i++) {
+        sobel_pixel_border_v3_stg0(im_in, im_out, 0, i, rows, cols);
+        sobel_pixel_border_v3_stg0(im_in, im_out, rows - 1, i, rows, cols);
+    }
+    for (int j = 1; j < rows - 1; j++) {
+        sobel_pixel_border_v3_stg0(im_in, im_out, j, 0, rows, cols);
+        sobel_pixel_border_v3_stg0(im_in, im_out, j, cols - 1, rows, cols);
+    }
+}
+
 void my_median (Mat im_in, Mat im_out, int n)
 {
 
@@ -670,3 +795,113 @@ void my_median_opti_m3_stg0(Mat im_in, Mat im_out)
     }
 }
 
+int clamp_coord(int val, int max_val) {
+    if (val < 0) {
+        return 0;
+    }
+    if (val >= max_val) {
+        return max_val - 1;
+    }
+    return val;
+}
+
+void my_median_opti_stg0(Mat im_in, Mat im_out, int n)
+{
+	if (n == 3)
+	{
+		my_median_opti_m3_stg0(im_in, im_out);
+		return;
+	}
+
+	// Implémentation de l'histogramme glissant de Huang (R4) pour n >= 5
+
+    int rows = im_in.rows;
+    int cols = im_in.cols;
+    int r = n / 2;
+    int L = n * n;
+    int h = (L + 1) / 2; // Rang de la médiane (ex: 13 pour n=5, 25 pour n=7)
+
+    for (int y = 0; y < rows; y++)
+    {
+        // 1. Initialisation de l'histogramme au début de chaque ligne (pixel x = 0)
+        int hist[256] = {0};
+
+        for (int i = -r; i <= r; i++)
+        {
+            int rr = clamp_coord(y + i, rows);
+            for (int j = -r; j <= r; j++)
+            {
+                int cc = clamp_coord(j, cols);
+                uchar val = im_in.at<uchar>(rr, cc);
+                hist[val]++;
+            }
+        }
+
+        // Recherche de la première valeur 'med' dont le cumul atteint au moins h
+        int count_sum = 0;
+        int med = 0;
+        for (int v = 0; v < 256; v++)
+        {
+            count_sum += hist[v];
+            if (count_sum >= h)
+            {
+                med = v;
+                break;
+            }
+        }
+
+        // Compte 'lt' des pixels strictement inférieurs à 'med' dans la fenêtre
+        int lt = 0;
+        for (int v = 0; v < med; v++)
+        {
+            lt += hist[v];
+        }
+
+        im_out.at<uchar>(y, 0) = (uchar)med;
+
+        // 2. Fenêtre glissante le long de la ligne (x = 1 jusqu'à cols - 1)
+        for (int x = 1; x < cols; x++)
+        {
+            // Retrait de la colonne sortante à gauche (x - r - 1)
+            int col_out = clamp_coord(x - r - 1, cols);
+            for (int i = -r; i <= r; i++)
+            {
+                int rr = clamp_coord(y + i, rows);
+                uchar v_out = im_in.at<uchar>(rr, col_out);
+                hist[v_out]--;
+                if (v_out < med)
+                {
+                    lt--;
+                }
+            }
+
+            // Ajout de la colonne entrante à droite (x + r)
+            int col_in = clamp_coord(x + r, cols);
+            for (int i = -r; i <= r; i++)
+            {
+                int rr = clamp_coord(y + i, rows);
+                uchar v_in = im_in.at<uchar>(rr, col_in);
+                hist[v_in]++;
+                if (v_in < med)
+                {
+                    lt++;
+                }
+            }
+
+            // Ajustement dynamique de la valeur médiane 'med'
+            while (lt >= h)
+            {
+                med--;
+                lt -= hist[med];
+            }
+
+            while (lt + hist[med] < h)
+            {
+                lt += hist[med];
+                med++;
+            }
+
+            im_out.at<uchar>(y, x) = (uchar)med;
+        }
+    }
+}

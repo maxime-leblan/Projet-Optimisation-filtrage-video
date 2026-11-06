@@ -360,116 +360,72 @@ void my_sobel_opti_v3_stg1(Mat im_in, Mat im_out)
 	int rows = im_in.rows;
     int cols = im_in.cols;
 
-    // 1. CŒUR DE L'IMAGE - PARCOURS STRICT COLONNE PAR COLONNE (i externe, j interne déroulé par 4)
-    for (int i = 1; i < cols - 1; i++)
+    // 1. BOUCLE EXTERNE SOUR LES LIGNES y (j)
+    for (int j = 1; j < rows - 1; j++)
     {
-        int j = 1;
+        // ROW POINTERS : Extraction des pointeurs directs sur les 3 lignes (supprime 100% des calls at<uchar>)
+        const uchar* r_top = im_in.ptr<uchar>(j - 1);
+        const uchar* r_mid = im_in.ptr<uchar>(j);
+        const uchar* r_bot = im_in.ptr<uchar>(j + 1);
+        uchar*       r_out = im_out.ptr<uchar>(j);
 
-        // Boucle interne déroulée par facteur 4 sur l'axe vertical (j, j+1, j+2, j+3)
-        for (; j <= rows - 5; j += 4)
+        int i = 1;
+
+        // 2. BOUCLE INTERNE DÉROULÉE SUR LE PARCOURS HORIZONTAL x (i) PAR d = 4
+        for (; i <= cols - 5; i += 4)
         {
-            // --- LECTURE EN MÉMOIRE DE 6 LIGNES SUR 3 COLONNES (i-1, i, i+1) ---
-            // Colonne gauche (i - 1)
-            int l_m1 = im_in.at<uchar>(j - 1, i - 1);
-            int l_0  = im_in.at<uchar>(j,     i - 1);
-            int l_1  = im_in.at<uchar>(j + 1, i - 1);
-            int l_2  = im_in.at<uchar>(j + 2, i - 1);
-            int l_3  = im_in.at<uchar>(j + 3, i - 1);
-            int l_4  = im_in.at<uchar>(j + 4, i - 1);
+            // --- PHASE 1 : LOADS FIRST ---
+            // Chargement unique des 6 colonnes (i-1 à i+4) couvrant les 4 pixels contigus le long de x
+            int t_m1 = r_top[i - 1], t_0 = r_top[i], t_1 = r_top[i + 1], t_2 = r_top[i + 2], t_3 = r_top[i + 3], t_4 = r_top[i + 4];
+            int m_m1 = r_mid[i - 1], m_0 = r_mid[i], m_1 = r_mid[i + 1], m_2 = r_mid[i + 2], m_3 = r_mid[i + 3], m_4 = r_mid[i + 4];
+            int b_m1 = r_bot[i - 1], b_0 = r_bot[i], b_1 = r_bot[i + 1], b_2 = r_bot[i + 2], b_3 = r_bot[i + 3], b_4 = r_bot[i + 4];
 
-            // Colonne centrale (i)
-            int c_m1 = im_in.at<uchar>(j - 1, i);
-            int c_0  = im_in.at<uchar>(j,     i);
-            int c_1  = im_in.at<uchar>(j + 1, i);
-            int c_2  = im_in.at<uchar>(j + 2, i);
-            int c_3  = im_in.at<uchar>(j + 3, i);
-            int c_4  = im_in.at<uchar>(j + 4, i);
+            // --- PHASE 2 : INDEPENDENT OPERATIONS (A, B, C, D) WITH RENAMING ---
+            // Aucune valeur n'est utilisée immédiatement après son chargement (évite les load-use stalls)
+            int A0 = b_1 - t_m1, B0 = t_1 - b_m1, C0 = m_1 - m_m1, D0 = b_0 - t_0;
+            int A1 = b_2 - t_0,  B1 = t_2 - b_0,  C1 = m_2 - m_0,  D1 = b_1 - t_1;
+            int A2 = b_3 - t_1,  B2 = t_3 - b_1,  C2 = m_3 - m_1,  D2 = b_2 - t_2;
+            int A3 = b_4 - t_2,  B3 = t_4 - b_2,  C3 = m_4 - m_2,  D3 = b_3 - t_3;
 
-            // Colonne droite (i + 1)
-            int r_m1 = im_in.at<uchar>(j - 1, i + 1);
-            int r_0  = im_in.at<uchar>(j,     i + 1);
-            int r_1  = im_in.at<uchar>(j + 1, i + 1);
-            int r_2  = im_in.at<uchar>(j + 2, i + 1);
-            int r_3  = im_in.at<uchar>(j + 3, i + 1);
-            int r_4  = im_in.at<uchar>(j + 4, i + 1);
+            // --- PHASE 3 : SEVERAL ACCUMULATORS (gx0..3, gy0..3) ---
+            // Casse la chaîne RAW de dépendances de boucle
+            int gx0 = A0 + B0 + (C0 << 1), gy0 = A0 - B0 + (D0 << 1);
+            int gx1 = A1 + B1 + (C1 << 1), gy1 = A1 - B1 + (D1 << 1);
+            int gx2 = A2 + B2 + (C2 << 1), gy2 = A2 - B2 + (D2 << 1);
+            int gx3 = A3 + B3 + (C3 << 1), gy3 = A3 - B3 + (D3 << 1);
 
-            // --- RENAMING & RÉASSOCIATION SOBEL V3 (Pixel 0 : ligne j) ---
-            int A0 = r_1 - l_m1;
-            int B0 = r_m1 - l_1;
-            int C0 = r_0 - l_0;
-            int D0 = c_1 - c_m1;
-
-            // --- RENAMING & RÉASSOCIATION SOBEL V3 (Pixel 1 : ligne j+1) ---
-            int A1 = r_2 - l_0;
-            int B1 = r_0 - l_2;
-            int C1 = r_1 - l_1;
-            int D1 = c_2 - c_0;
-
-            // --- RENAMING & RÉASSOCIATION SOBEL V3 (Pixel 2 : ligne j+2) ---
-            int A2 = r_3 - l_1;
-            int B2 = r_1 - l_3;
-            int C2 = r_2 - l_2;
-            int D2 = c_3 - c_1;
-
-            // --- RENAMING & RÉASSOCIATION SOBEL V3 (Pixel 3 : ligne j+3) ---
-            int A3 = r_4 - l_2;
-            int B3 = r_2 - l_4;
-            int C3 = r_3 - l_3;
-            int D3 = c_4 - c_2;
-
-            // --- ACCUMULATEURS SÉPARÉS (4 pipelines virtuels) ---
-            int gx0 = A0 + B0 + (C0 << 1);
-            int gy0 = A0 - B0 + (D0 << 1);
-
-            int gx1 = A1 + B1 + (C1 << 1);
-            int gy1 = A1 - B1 + (D1 << 1);
-
-            int gx2 = A2 + B2 + (C2 << 1);
-            int gy2 = A2 - B2 + (D2 << 1);
-
-            int gx3 = A3 + B3 + (C3 << 1);
-            int gy3 = A3 - B3 + (D3 << 1);
-
-            // --- SATURATION BRANCH-FREE (std::min) ---
+            // --- PHASE 4 : BRANCH-FREE COMPARE-EXCHANGE / SATURATION ---
+            // Dépendances de contrôle converties en dépendances de données sans misprediction
             int g0 = std::min((std::min(std::abs(gx0), 255) + std::min(std::abs(gy0), 255)) >> 1, 255);
             int g1 = std::min((std::min(std::abs(gx1), 255) + std::min(std::abs(gy1), 255)) >> 1, 255);
             int g2 = std::min((std::min(std::abs(gx2), 255) + std::min(std::abs(gy2), 255)) >> 1, 255);
             int g3 = std::min((std::min(std::abs(gx3), 255) + std::min(std::abs(gy3), 255)) >> 1, 255);
 
-            // Écriture des 4 pixels le long de la colonne i
-            im_out.at<uchar>(j,     i) = (uchar)g0;
-            im_out.at<uchar>(j + 1, i) = (uchar)g1;
-            im_out.at<uchar>(j + 2, i) = (uchar)g2;
-            im_out.at<uchar>(j + 3, i) = (uchar)g3;
+            // --- PHASE 5 : STORES ---
+            r_out[i]     = (uchar)g0;
+            r_out[i + 1] = (uchar)g1;
+            r_out[i + 2] = (uchar)g2;
+            r_out[i + 3] = (uchar)g3;
         }
 
-        // Boucle de reste sur la colonne i pour les lignes restantes
-        for (; j < rows - 1; j++)
+        // 3. REMAINDER LOOP (Pour les derniers W mod d pixels en bout de ligne)
+        for (; i < cols - 1; i++)
         {
-            int nw = im_in.at<uchar>(j - 1, i - 1);
-            int n  = im_in.at<uchar>(j - 1, i);
-            int ne = im_in.at<uchar>(j - 1, i + 1);
-            int w  = im_in.at<uchar>(j,     i - 1);
-            int e  = im_in.at<uchar>(j,     i + 1);
-            int sw = im_in.at<uchar>(j + 1, i - 1);
-            int s  = im_in.at<uchar>(j + 1, i);
-            int se = im_in.at<uchar>(j + 1, i + 1);
+            int t_m1 = r_top[i - 1], t_0 = r_top[i], t_1 = r_top[i + 1];
+            int m_m1 = r_mid[i - 1],               m_1 = r_mid[i + 1];
+            int b_m1 = r_bot[i - 1], b_0 = r_bot[i], b_1 = r_bot[i + 1];
 
-            int A = se - nw;
-            int B = ne - sw;
-            int C = e  - w;
-            int D = s  - n;
+            int A = b_1 - t_m1, B = t_1 - b_m1, C = m_1 - m_m1, D = b_0 - t_0;
 
             int gx = A + B + (C << 1);
             int gy = A - B + (D << 1);
 
             int g = std::min((std::min(std::abs(gx), 255) + std::min(std::abs(gy), 255)) >> 1, 255);
-
-            im_out.at<uchar>(j, i) = (uchar)g;
+            r_out[i] = (uchar)g;
         }
     }
 
-    // 2. GESTION DES BORDS DE L'IMAGE
+    // 4. GESTION DES BORDS
     for (int i = 0; i < cols; i++) {
         sobel_pixel_border_v3_stg0(im_in, im_out, 0, i, rows, cols);
         sobel_pixel_border_v3_stg0(im_in, im_out, rows - 1, i, rows, cols);
@@ -555,10 +511,23 @@ void CE(uchar &a, uchar &b) {
     }
 }
 
+void CE_BF(uchar &a, uchar &b) {               
+    uchar _min = std::min(a, b);    
+    uchar _max = std::max(a, b);    
+    a = _min;                       
+    b = _max;                       
+}
+
 void sort3(uchar &a, uchar &b, uchar &c) {
     CE(a, b);
     CE(b, c);
     CE(a, b);
+}
+
+void sort3_bf(uchar &a, uchar &b, uchar &c) {
+    CE_BF(a, b);
+    CE_BF(b, c);
+    CE_BF(a, b);
 }
 
 void median_pixel_border_m2_3t3_stg0(Mat im_in, Mat im_out, int row, int col, int rows, int cols)
@@ -795,6 +764,137 @@ void my_median_opti_m3_stg0(Mat im_in, Mat im_out)
     }
 }
 
+void my_median_opti_m3_stg1(Mat im_in, Mat im_out)
+{
+    int rows = im_in.rows;
+    int cols = im_in.cols;
+
+    // 1. CŒUR DE L'IMAGE - BALAYAGE PAR FENÊTRE GLISSANTE ET DÉROULAGE PAR d = 4 SUR LE LONG DE x (i)
+    for (int j = 1; j < rows - 1; j++)
+    {
+        // ROW POINTERS : Suppression de 100% des appels im_in.at<uchar>()
+        const uchar* r_top = im_in.ptr<uchar>(j - 1);
+        const uchar* r_mid = im_in.ptr<uchar>(j);
+        const uchar* r_bot = im_in.ptr<uchar>(j + 1);
+        uchar*       r_out = im_out.ptr<uchar>(j);
+
+        // Amorçage (Priming) : Tri des colonnes 0 et 1 conservées en registres
+        uchar c0_0 = r_top[0], c0_1 = r_mid[0], c0_2 = r_bot[0];
+        sort3_bf(c0_0, c0_1, c0_2);
+
+        uchar c1_0 = r_top[1], c1_1 = r_mid[1], c1_2 = r_bot[1];
+        sort3_bf(c1_0, c1_1, c1_2);
+
+        int i = 1;
+
+        // Boucle principale déroulée par d = 4 pixels (i, i+1, i+2, i+3)
+        for (; i <= cols - 5; i += 4)
+        {
+            // --- PHASE 1 : LOADS FIRST ---
+            // Chargement des 4 nouvelles colonnes entrantes (i+1, i+2, i+3, i+4)
+            uchar c2_0 = r_top[i + 1], c2_1 = r_mid[i + 1], c2_2 = r_bot[i + 1];
+            uchar c3_0 = r_top[i + 2], c3_1 = r_mid[i + 2], c3_2 = r_bot[i + 2];
+            uchar c4_0 = r_top[i + 3], c4_1 = r_mid[i + 3], c4_2 = r_bot[i + 3];
+            uchar c5_0 = r_top[i + 4], c5_1 = r_mid[i + 4], c5_2 = r_bot[i + 4];
+
+            // --- PHASE 2 : INTERLEAVED SORTING OF NEW COLUMNS (c2, c3, c4, c5) ---
+            // Entrelacement des réseaux de tri des 4 colonnes pour masquer les latences
+            CE_BF(c2_0, c2_1); CE_BF(c3_0, c3_1); CE_BF(c4_0, c4_1); CE_BF(c5_0, c5_1);
+            CE_BF(c2_1, c2_2); CE_BF(c3_1, c3_2); CE_BF(c4_1, c4_2); CE_BF(c5_1, c5_2);
+            CE_BF(c2_0, c2_1); CE_BF(c3_0, c3_1); CE_BF(c4_0, c4_1); CE_BF(c5_0, c5_1);
+
+            // --- PHASE 3 : RENAMING & INITIALISATION DES 4 FENÊTRES ---
+            // Ligne 1 des 4 pixels
+            uchar r1_0_0 = c0_0, r1_1_0 = c1_0, r1_2_0 = c2_0; // Pixel 0 (i)
+            uchar r1_0_1 = c1_0, r1_1_1 = c2_0, r1_2_1 = c3_0; // Pixel 1 (i+1)
+            uchar r1_0_2 = c2_0, r1_1_2 = c3_0, r1_2_2 = c4_0; // Pixel 2 (i+2)
+            uchar r1_0_3 = c3_0, r1_1_3 = c4_0, r1_2_3 = c5_0; // Pixel 3 (i+3)
+
+            // Ligne 2 des 4 pixels
+            uchar r2_0_0 = c0_1, r2_1_0 = c1_1, r2_2_0 = c2_1;
+            uchar r2_0_1 = c1_1, r2_1_1 = c2_1, r2_2_1 = c3_1;
+            uchar r2_0_2 = c2_1, r2_1_2 = c3_1, r2_2_2 = c4_1;
+            uchar r2_0_3 = c3_1, r2_1_3 = c4_1, r2_2_3 = c5_1;
+
+            // Ligne 3 des 4 pixels
+            uchar r3_0_0 = c0_2, r3_1_0 = c1_2, r3_2_0 = c2_2;
+            uchar r3_0_1 = c1_2, r3_1_1 = c2_2, r3_2_1 = c3_2;
+            uchar r3_0_2 = c2_2, r3_1_2 = c3_2, r3_2_2 = c4_2;
+            uchar r3_0_3 = c3_2, r3_1_3 = c4_2, r3_2_3 = c5_2;
+
+            // --- PHASE 4 : INTERLEAVED ROW SORTING NETWORKS (P0, P1, P2, P3) ---
+            // Passe 1 (Comparaison éléments 0 et 1)
+            CE_BF(r1_0_0, r1_1_0); CE_BF(r1_0_1, r1_1_1); CE_BF(r1_0_2, r1_1_2); CE_BF(r1_0_3, r1_1_3);
+            CE_BF(r2_0_0, r2_1_0); CE_BF(r2_0_1, r2_1_1); CE_BF(r2_0_2, r2_1_2); CE_BF(r2_0_3, r2_1_3);
+            CE_BF(r3_0_0, r3_1_0); CE_BF(r3_0_1, r3_1_1); CE_BF(r3_0_2, r3_1_2); CE_BF(r3_0_3, r3_1_3);
+
+            // Passe 2 (Comparaison éléments 1 et 2)
+            CE_BF(r1_1_0, r1_2_0); CE_BF(r1_1_1, r1_2_1); CE_BF(r1_1_2, r1_2_2); CE_BF(r1_1_3, r1_2_3);
+            CE_BF(r2_1_0, r2_2_0); CE_BF(r2_1_1, r2_2_1); CE_BF(r2_1_2, r2_2_2); CE_BF(r2_1_3, r2_2_3);
+            CE_BF(r3_1_0, r3_2_0); CE_BF(r3_1_1, r3_2_1); CE_BF(r3_1_2, r3_2_2); CE_BF(r3_1_3, r3_2_3);
+
+            // Passe 3 (Comparaison éléments 0 et 1)
+            CE_BF(r1_0_0, r1_1_0); CE_BF(r1_0_1, r1_1_1); CE_BF(r1_0_2, r1_1_2); CE_BF(r1_0_3, r1_1_3);
+            CE_BF(r2_0_0, r2_1_0); CE_BF(r2_0_1, r2_1_1); CE_BF(r2_0_2, r2_1_2); CE_BF(r2_0_3, r2_1_3);
+            CE_BF(r3_0_0, r3_1_0); CE_BF(r3_0_1, r3_1_1); CE_BF(r3_0_2, r3_1_2); CE_BF(r3_0_3, r3_1_3);
+
+            // --- PHASE 5 : INTERLEAVED ANTI-DIAGONAL SORTING ---
+            uchar med0 = r2_1_0;
+            uchar med1 = r2_1_1;
+            uchar med2 = r2_1_2;
+            uchar med3 = r2_1_3;
+
+            CE_BF(r1_2_0, med0); CE_BF(r1_2_1, med1); CE_BF(r1_2_2, med2); CE_BF(r1_2_3, med3);
+            CE_BF(med0, r3_0_0); CE_BF(med1, r3_0_1); CE_BF(med2, r3_0_2); CE_BF(med3, r3_0_3);
+            CE_BF(r1_2_0, med0); CE_BF(r1_2_1, med1); CE_BF(r1_2_2, med2); CE_BF(r1_2_3, med3);
+
+            // --- PHASE 6 : STORES ---
+            r_out[i]     = med0;
+            r_out[i + 1] = med1;
+            r_out[i + 2] = med2;
+            r_out[i + 3] = med3;
+
+            // Décalage de la fenêtre dans les registres pour l'itération suivante
+            c0_0 = c4_0; c0_1 = c4_1; c0_2 = c4_2;
+            c1_0 = c5_0; c1_1 = c5_1; c1_2 = c5_2;
+        }
+
+        // 2. REMAINDER LOOP (Pour les pixels restants en fin de ligne : W mod d)
+        for (; i < cols - 1; i++)
+        {
+            uchar c2_0 = r_top[i + 1], c2_1 = r_mid[i + 1], c2_2 = r_bot[i + 1];
+            sort3_bf(c2_0, c2_1, c2_2);
+
+            uchar r1_0 = c0_0, r1_1 = c1_0, r1_2 = c2_0;
+            sort3_bf(r1_0, r1_1, r1_2);
+
+            uchar r2_0 = c0_1, r2_1 = c1_1, r2_2 = c2_1;
+            sort3_bf(r2_0, r2_1, r2_2);
+
+            uchar r3_0 = c0_2, r3_1 = c1_2, r3_2 = c2_2;
+            sort3_bf(r3_0, r3_1, r3_2);
+
+            uchar med = r2_1;
+            sort3_bf(r1_2, med, r3_0);
+
+            r_out[i] = med;
+
+            c0_0 = c1_0; c0_1 = c1_1; c0_2 = c1_2;
+            c1_0 = c2_0; c1_1 = c2_1; c1_2 = c2_2;
+        }
+    }
+
+    // 3. GESTION DES BORDS
+    for (int i = 0; i < cols; i++) {
+        median_pixel_border_m3_stg0(im_in, im_out, 0, i, rows, cols);
+        median_pixel_border_m3_stg0(im_in, im_out, rows - 1, i, rows, cols);
+    }
+    for (int j = 1; j < rows - 1; j++) {
+        median_pixel_border_m3_stg0(im_in, im_out, j, 0, rows, cols);
+        median_pixel_border_m3_stg0(im_in, im_out, j, cols - 1, rows, cols);
+    }
+}
+
 int clamp_coord(int val, int max_val) {
     if (val < 0) {
         return 0;
@@ -805,15 +905,9 @@ int clamp_coord(int val, int max_val) {
     return val;
 }
 
-void my_median_opti_stg0(Mat im_in, Mat im_out, int n)
+void my_median_opti_huang_stg0(Mat im_in, Mat im_out, int n)
 {
-	if (n == 3)
-	{
-		my_median_opti_m3_stg0(im_in, im_out);
-		return;
-	}
-
-	// Implémentation de l'histogramme glissant de Huang (R4) pour n >= 5
+    // Implémentation de l'histogramme glissant de Huang (R4) pour n >= 5
 
     int rows = im_in.rows;
     int cols = im_in.cols;
@@ -903,5 +997,30 @@ void my_median_opti_stg0(Mat im_in, Mat im_out, int n)
 
             im_out.at<uchar>(y, x) = (uchar)med;
         }
+    }
+}
+
+void my_median_opti_stg0(Mat im_in, Mat im_out, int n)
+{
+	if (n == 3)
+	{
+		my_median_opti_m3_stg0(im_in, im_out);
+		return;
+	}
+    else
+    {
+        my_median_opti_huang_stg0(im_in, im_out, n);
+    }
+}
+
+void my_median_opti_stg1(Mat im_in, Mat im_out, int n)
+{
+    if (n == 3)
+    {
+        my_median_opti_m3_stg1(im_in, im_out);
+    }
+    else
+    {
+        my_median_opti_huang_stg0(im_in, im_out, n);
     }
 }

@@ -11,6 +11,9 @@
 #include <ctime>
 #include <iomanip>
 #include <sstream>
+#include <algorithm>
+#include <cmath>
+#include <omp.h>
 
 /*INCLUDES pour version 4.1*/
 #include "opencv2/imgproc.hpp"
@@ -46,6 +49,12 @@ void my_sobel_opti_v4_stg0(Mat im_in, Mat im_out);
 void my_sobel_opti_v3_stg1(Mat im_in, Mat im_out);
 void my_sobel_opti_v3_stg2(Mat im_in, Mat im_out);
 
+/**
+ * Commande de compilation spécifique lors de l'utilisation de cette fonction :
+ * g++ -O0 -fopenmp projet_24_v1.cpp my_functions.cpp mesure_functions.cpp -o projet $(pkg-config --cflags --libs opencv4) -lm
+ */
+void my_sobel_opti_v3_stg3(Mat im_in, Mat im_out, int num_threads = 0);
+
 void CE(uchar &a, uchar &b);
 void CE_BF(uchar &a, uchar &b);
 
@@ -66,7 +75,17 @@ void my_median_opti_m2_3t3_stg0(Mat im_in, Mat im_out);
 void my_median_opti_m3_stg0(Mat im_in, Mat im_out);
 void my_median_opti_m3_stg1(Mat im_in, Mat im_out);
 void my_median_opti_m3_stg2(Mat im_in, Mat im_out);
+/**
+ * Commande de compilation spécifique lors de l'utilisation de cette fonction :
+ * g++ -O0 -fopenmp projet_24_v1.cpp my_functions.cpp mesure_functions.cpp -o projet $(pkg-config --cflags --libs opencv4) -lm
+ */
+void my_median_opti_m3_stg3(Mat im_in, Mat im_out, int num_threads = 0);
 void my_median_opti_huang_stg0(Mat im_in, Mat im_out, int n);
 void my_median_opti_stg0(Mat im_in, Mat im_out, int n);
 void my_median_opti_stg1(Mat im_in, Mat im_out, int n);
 void my_median_opti_stg2(Mat im_in, Mat im_out, int n);
+/**
+ * Commande de compilation spécifique lors de l'utilisation de cette fonction :
+ * g++ -O0 -fopenmp projet_24_v1.cpp my_functions.cpp mesure_functions.cpp -o projet $(pkg-config --cflags --libs opencv4) -lm
+ */
+void my_median_opti_stg3(Mat im_in, Mat im_out, int n, int num_threads = 0);

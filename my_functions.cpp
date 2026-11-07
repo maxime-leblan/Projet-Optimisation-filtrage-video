@@ -529,6 +529,104 @@ void my_sobel_opti_v3_stg2(Mat im_in, Mat im_out)
     }
 }
 
+void my_sobel_opti_v3_stg3(Mat im_in, Mat im_out, int num_threads)
+{
+    int rows = im_in.rows;
+    int cols = im_in.cols;
+
+    // Si un nombre de threads spécifique est demandé (> 0), on configure OpenMP
+    if (num_threads > 0)
+    {
+        omp_set_num_threads(num_threads);
+    }
+
+    // 1. DÉCOUPAGE EN BANDES HORIZONTALES (OPENMP)
+    // schedule(static) divise équitablement les (rows - 2) lignes entre les threads.
+    // Chaque thread traite une bande continue de lignes.
+    #pragma omp parallel for schedule(static)
+    for (int j = 1; j < rows - 1; j++)
+    {
+        // ROW POINTERS : Accès mémoire direct pour la ligne du thread courant
+        const uchar* r_top = im_in.ptr<uchar>(j - 1);
+        const uchar* r_mid = im_in.ptr<uchar>(j);
+        const uchar* r_bot = im_in.ptr<uchar>(j + 1);
+        uchar*       r_out = im_out.ptr<uchar>(j);
+
+        // AMORÇAGE (PRIMING) : Chargement initial des 2 premières colonnes en registres
+        int t_m1 = r_top[0], m_m1 = r_mid[0], b_m1 = r_bot[0];
+        int t_0  = r_top[1], m_0  = r_mid[1], b_0  = r_bot[1];
+
+        int i = 1;
+
+        // 2. BOUCLE DÉROULÉE PAR d = 4 AVEC FENÊTRE GLISSANTE EN REGISTRES
+        for (; i <= cols - 5; i += 4)
+        {
+            // Chargement unique des 4 nouvelles colonnes entrantes
+            int t_1 = r_top[i + 1], m_1 = r_mid[i + 1], b_1 = r_bot[i + 1];
+            int t_2 = r_top[i + 2], m_2 = r_mid[i + 2], b_2 = r_bot[i + 2];
+            int t_3 = r_top[i + 3], m_3 = r_mid[i + 3], b_3 = r_bot[i + 3];
+            int t_4 = r_top[i + 4], m_4 = r_mid[i + 4], b_4 = r_bot[i + 4];
+
+            // Renaming & Réassociation Sobel V3 (4 pixels en parallèle)
+            int A0 = b_1 - t_m1, B0 = t_1 - b_m1, C0 = m_1 - m_m1, D0 = b_0 - t_0;
+            int A1 = b_2 - t_0,  B1 = t_2 - b_0,  C1 = m_2 - m_0,  D1 = b_1 - t_1;
+            int A2 = b_3 - t_1,  B2 = t_3 - b_1,  C2 = m_3 - m_1,  D2 = b_2 - t_2;
+            int A3 = b_4 - t_2,  B3 = t_4 - b_2,  C3 = m_4 - m_2,  D3 = b_3 - t_3;
+
+            // Accumulateurs séparés
+            int gx0 = A0 + B0 + (C0 << 1), gy0 = A0 - B0 + (D0 << 1);
+            int gx1 = A1 + B1 + (C1 << 1), gy1 = A1 - B1 + (D1 << 1);
+            int gx2 = A2 + B2 + (C2 << 1), gy2 = A2 - B2 + (D2 << 1);
+            int gx3 = A3 + B3 + (C3 << 1), gy3 = A3 - B3 + (D3 << 1);
+
+            // Saturation Branch-Free
+            int g0 = std::min((std::min(std::abs(gx0), 255) + std::min(std::abs(gy0), 255)) >> 1, 255);
+            int g1 = std::min((std::min(std::abs(gx1), 255) + std::min(std::abs(gy1), 255)) >> 1, 255);
+            int g2 = std::min((std::min(std::abs(gx2), 255) + std::min(std::abs(gy2), 255)) >> 1, 255);
+            int g3 = std::min((std::min(std::abs(gx3), 255) + std::min(std::abs(gy3), 255)) >> 1, 255);
+
+            // Stores contigus
+            r_out[i]     = (uchar)g0;
+            r_out[i + 1] = (uchar)g1;
+            r_out[i + 2] = (uchar)g2;
+            r_out[i + 3] = (uchar)g3;
+
+            // Décalage de la fenêtre dans les registres du thread
+            t_m1 = t_3; m_m1 = m_3; b_m1 = b_3;
+            t_0  = t_4; m_0  = m_4; b_0  = b_4;
+        }
+
+        // 3. REMAINDER LOOP
+        for (; i < cols - 1; i++)
+        {
+            int t_1 = r_top[i + 1], m_1 = r_mid[i + 1], b_1 = r_bot[i + 1];
+
+            int A = b_1 - t_m1, B = t_1 - b_m1, C = m_1 - m_m1, D = b_0 - t_0;
+            int gx = A + B + (C << 1);
+            int gy = A - B + (D << 1);
+
+            int g = std::min((std::min(std::abs(gx), 255) + std::min(std::abs(gy), 255)) >> 1, 255);
+            r_out[i] = (uchar)g;
+
+            t_m1 = t_0; m_m1 = m_0; b_m1 = b_0;
+            t_0  = t_1; m_0  = m_1; b_0  = b_1;
+        }
+    }
+
+    // 4. GESTION DES BORDS EN PARALLÈLE
+    #pragma omp parallel for schedule(static)
+    for (int i = 0; i < cols; i++) {
+        sobel_pixel_border_v3_stg0(im_in, im_out, 0, i, rows, cols);
+        sobel_pixel_border_v3_stg0(im_in, im_out, rows - 1, i, rows, cols);
+    }
+
+    #pragma omp parallel for schedule(static)
+    for (int j = 1; j < rows - 1; j++) {
+        sobel_pixel_border_v3_stg0(im_in, im_out, j, 0, rows, cols);
+        sobel_pixel_border_v3_stg0(im_in, im_out, j, cols - 1, rows, cols);
+    }
+}
+
 void my_median (Mat im_in, Mat im_out, int n)
 {
 
@@ -1104,6 +1202,130 @@ void my_median_opti_m3_stg2(Mat im_in, Mat im_out)
     }
 }
 
+void my_median_opti_m3_stg3(Mat im_in, Mat im_out, int num_threads)
+{
+    int rows = im_in.rows;
+    int cols = im_in.cols;
+
+    // Configuration du nombre de threads OpenMP si spécifié
+    if (num_threads > 0)
+    {
+        omp_set_num_threads(num_threads);
+    }
+
+    // 1. CŒUR DE L'IMAGE - PARALLÉLISATION OPENMP EN BANDES HORIZONTALES
+    #pragma omp parallel for schedule(static)
+    for (int j = 1; j < rows - 1; j++)
+    {
+        // ROW POINTERS : Accès mémoire direct pour le thread courant
+        const uchar* r_top = im_in.ptr<uchar>(j - 1);
+        const uchar* r_mid = im_in.ptr<uchar>(j);
+        const uchar* r_bot = im_in.ptr<uchar>(j + 1);
+        uchar*       r_out = im_out.ptr<uchar>(j);
+
+        // AMORÇAGE (PRIMING) : Chargement et tri des colonnes 0 et 1 dans les registres du thread
+        uchar c0_0 = r_top[0], c0_1 = r_mid[0], c0_2 = r_bot[0];
+        sort3_bf(c0_0, c0_1, c0_2);
+
+        uchar c1_0 = r_top[1], c1_1 = r_mid[1], c1_2 = r_bot[1];
+        sort3_bf(c1_0, c1_1, c1_2);
+
+        int i = 1;
+
+        // 2. BOUCLE PRINCIPALE DÉROULÉE PAR d = 4 AVEC FENÊTRE GLISSANTE
+        for (; i <= cols - 5; i += 4)
+        {
+            // --- LOADS FIRST : Chargement des 4 nouvelles colonnes entrantes (i+1..i+4) ---
+            uchar c2_0 = r_top[i + 1], c2_1 = r_mid[i + 1], c2_2 = r_bot[i + 1];
+            uchar c3_0 = r_top[i + 2], c3_1 = r_mid[i + 2], c3_2 = r_bot[i + 2];
+            uchar c4_0 = r_top[i + 3], c4_1 = r_mid[i + 3], c4_2 = r_bot[i + 3];
+            uchar c5_0 = r_top[i + 4], c5_1 = r_mid[i + 4], c5_2 = r_bot[i + 4];
+
+            // --- TRI ENTRELACÉ DES 4 NOUVELLES COLONNES ---
+            CE_BF(c2_0, c2_1); CE_BF(c3_0, c3_1); CE_BF(c4_0, c4_1); CE_BF(c5_0, c5_1);
+            CE_BF(c2_1, c2_2); CE_BF(c3_1, c3_2); CE_BF(c4_1, c4_2); CE_BF(c5_1, c5_2);
+            CE_BF(c2_0, c2_1); CE_BF(c3_0, c3_1); CE_BF(c4_0, c4_1); CE_BF(c5_0, c5_1);
+
+            // --- INITIALISATION DES 4 FENÊTRES (Renaming) ---
+            uchar r1_0_0 = c0_0, r1_1_0 = c1_0, r1_2_0 = c2_0; // Pixel 0 (col i)
+            uchar r1_0_1 = c1_0, r1_1_1 = c2_0, r1_2_1 = c3_0; // Pixel 1 (col i+1)
+            uchar r1_0_2 = c2_0, r1_1_2 = c3_0, r1_2_2 = c4_0; // Pixel 2 (col i+2)
+            uchar r1_0_3 = c3_0, r1_1_3 = c4_0, r1_2_3 = c5_0; // Pixel 3 (col i+3)
+
+            uchar r2_0_0 = c0_1, r2_1_0 = c1_1, r2_2_0 = c2_1;
+            uchar r2_0_1 = c1_1, r2_1_1 = c2_1, r2_2_1 = c3_1;
+            uchar r2_0_2 = c2_1, r2_1_2 = c3_1, r2_2_2 = c4_1;
+            uchar r2_0_3 = c3_1, r2_1_3 = c4_1, r2_2_3 = c5_1;
+
+            uchar r3_0_0 = c0_2, r3_1_0 = c1_2, r3_2_0 = c2_2;
+            uchar r3_0_1 = c1_2, r3_1_1 = c2_2, r3_2_1 = c3_2;
+            uchar r3_0_2 = c2_2, r3_1_2 = c3_2, r3_2_2 = c4_2;
+            uchar r3_0_3 = c3_2, r3_1_3 = c4_2, r3_2_3 = c5_2;
+
+            // --- RÉSEAUX DE TRI DES LIGNES (ENTRELACÉS) ---
+            CE_BF(r1_0_0, r1_1_0); CE_BF(r1_0_1, r1_1_1); CE_BF(r1_0_2, r1_1_2); CE_BF(r1_0_3, r1_1_3);
+            CE_BF(r2_0_0, r2_1_0); CE_BF(r2_0_1, r2_1_1); CE_BF(r2_0_2, r2_1_2); CE_BF(r2_0_3, r2_1_3);
+            CE_BF(r3_0_0, r3_1_0); CE_BF(r3_0_1, r3_1_1); CE_BF(r3_0_2, r3_1_2); CE_BF(r3_0_3, r3_1_3);
+
+            CE_BF(r1_1_0, r1_2_0); CE_BF(r1_1_1, r1_2_1); CE_BF(r1_1_2, r1_2_2); CE_BF(r1_1_3, r1_2_3);
+            CE_BF(r2_1_0, r2_2_0); CE_BF(r2_1_1, r2_2_1); CE_BF(r2_1_2, r2_2_2); CE_BF(r2_1_3, r2_2_3);
+            CE_BF(r3_1_0, r3_2_0); CE_BF(r3_1_1, r3_2_1); CE_BF(r3_1_2, r3_2_2); CE_BF(r3_1_3, r3_2_3);
+
+            CE_BF(r1_0_0, r1_1_0); CE_BF(r1_0_1, r1_1_1); CE_BF(r1_0_2, r1_1_2); CE_BF(r1_0_3, r1_1_3);
+            CE_BF(r2_0_0, r2_1_0); CE_BF(r2_0_1, r2_1_1); CE_BF(r2_0_2, r2_1_2); CE_BF(r2_0_3, r2_1_3);
+            CE_BF(r3_0_0, r3_1_0); CE_BF(r3_0_1, r3_1_1); CE_BF(r3_0_2, r3_1_2); CE_BF(r3_0_3, r3_1_3);
+
+            // --- TRI ANTI-DIAGONALE ET EXTRACTION MÉDIANE ---
+            uchar med0 = r2_1_0, med1 = r2_1_1, med2 = r2_1_2, med3 = r2_1_3;
+
+            CE_BF(r1_2_0, med0); CE_BF(r1_2_1, med1); CE_BF(r1_2_2, med2); CE_BF(r1_2_3, med3);
+            CE_BF(med0, r3_0_0); CE_BF(med1, r3_0_1); CE_BF(med2, r3_0_2); CE_BF(med3, r3_0_3);
+            CE_BF(r1_2_0, med0); CE_BF(r1_2_1, med1); CE_BF(r1_2_2, med2); CE_BF(r1_2_3, med3);
+
+            // --- STORES CONTIGUS ---
+            r_out[i]     = med0;
+            r_out[i + 1] = med1;
+            r_out[i + 2] = med2;
+            r_out[i + 3] = med3;
+
+            // --- RÉUTILISATION DE LA FENÊTRE EN REGISTRES ---
+            c0_0 = c4_0; c0_1 = c4_1; c0_2 = c4_2;
+            c1_0 = c5_0; c1_1 = c5_1; c1_2 = c5_2;
+        }
+
+        // 3. REMAINDER LOOP
+        for (; i < cols - 1; i++)
+        {
+            uchar c2_0 = r_top[i + 1], c2_1 = r_mid[i + 1], c2_2 = r_bot[i + 1];
+            sort3_bf(c2_0, c2_1, c2_2);
+
+            uchar r1_0 = c0_0, r1_1 = c1_0, r1_2 = c2_0; sort3_bf(r1_0, r1_1, r1_2);
+            uchar r2_0 = c0_1, r2_1 = c1_1, r2_2 = c2_1; sort3_bf(r2_0, r2_1, r2_2);
+            uchar r3_0 = c0_2, r3_1 = c1_2, r3_2 = c2_2; sort3_bf(r3_0, r3_1, r3_2);
+
+            uchar med = r2_1;
+            sort3_bf(r1_2, med, r3_0);
+            r_out[i] = med;
+
+            c0_0 = c1_0; c0_1 = c1_1; c0_2 = c1_2;
+            c1_0 = c2_0; c1_1 = c2_1; c1_2 = c2_2;
+        }
+    }
+
+    // 4. BORDS PARALLÉLISÉS
+    #pragma omp parallel for schedule(static)
+    for (int i = 0; i < cols; i++) {
+        median_pixel_border_m3_stg0(im_in, im_out, 0, i, rows, cols);
+        median_pixel_border_m3_stg0(im_in, im_out, rows - 1, i, rows, cols);
+    }
+
+    #pragma omp parallel for schedule(static)
+    for (int j = 1; j < rows - 1; j++) {
+        median_pixel_border_m3_stg0(im_in, im_out, j, 0, rows, cols);
+        median_pixel_border_m3_stg0(im_in, im_out, j, cols - 1, rows, cols);
+    }
+}
+
 int clamp_coord(int val, int max_val) {
     if (val < 0) {
         return 0;
@@ -1239,6 +1461,18 @@ void my_median_opti_stg2(Mat im_in, Mat im_out, int n)
     if (n == 3)
     {
         my_median_opti_m3_stg2(im_in, im_out);
+    }
+    else
+    {
+        my_median_opti_huang_stg0(im_in, im_out, n);
+    }
+}
+
+void my_median_opti_stg3(Mat im_in, Mat im_out, int n, int num_threads)
+{
+    if (n == 3)
+    {
+        my_median_opti_m3_stg3(im_in, im_out, num_threads);
     }
     else
     {

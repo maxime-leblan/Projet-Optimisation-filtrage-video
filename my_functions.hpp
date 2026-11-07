@@ -44,6 +44,7 @@ void my_sobel_opti_v3_stg0(Mat im_in, Mat im_out);
 void my_sobel_opti_v4_stg0(Mat im_in, Mat im_out);
 
 void my_sobel_opti_v3_stg1(Mat im_in, Mat im_out);
+void my_sobel_opti_v3_stg2(Mat im_in, Mat im_out);
 
 void CE(uchar &a, uchar &b);
 void CE_BF(uchar &a, uchar &b);
@@ -64,6 +65,8 @@ int clamp_coord(int val, int max_val);
 void my_median_opti_m2_3t3_stg0(Mat im_in, Mat im_out);
 void my_median_opti_m3_stg0(Mat im_in, Mat im_out);
 void my_median_opti_m3_stg1(Mat im_in, Mat im_out);
+void my_median_opti_m3_stg2(Mat im_in, Mat im_out);
 void my_median_opti_huang_stg0(Mat im_in, Mat im_out, int n);
 void my_median_opti_stg0(Mat im_in, Mat im_out, int n);
 void my_median_opti_stg1(Mat im_in, Mat im_out, int n);
+void my_median_opti_stg2(Mat im_in, Mat im_out, int n);

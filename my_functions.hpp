@@ -42,7 +42,7 @@ void sobel_pixel_border_v1_stg0(Mat im_in, Mat im_out, int i, int j, int rows, i
  */
 void sobel_pixel_border_v3_stg0(Mat im_in, Mat im_out, int i, int j, int rows, int cols);
 
-void my_sobel_opti_v1_stg0(Mat , Mat );
+void my_sobel_opti_v2_stg0(Mat , Mat );
 void my_sobel_opti_v3_stg0(Mat im_in, Mat im_out);
 void my_sobel_opti_v4_stg0(Mat im_in, Mat im_out);
 

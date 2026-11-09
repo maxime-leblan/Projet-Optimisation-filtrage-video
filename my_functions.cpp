@@ -1,5 +1,4 @@
 #include "my_functions.hpp"
-#include <math.h>
 
 
 void my_sobel (Mat im_in, Mat im_out)
@@ -192,7 +191,7 @@ void sobel_pixel_border_v3_stg0(Mat im_in, Mat im_out, int i, int j, int rows, i
 	im_out.at<uchar>(i,j) = (uchar)(g);
 }
 
-void my_sobel_opti_v1_stg0(Mat im_in, Mat im_out)
+void my_sobel_opti_v2_stg0(Mat im_in, Mat im_out)
 {
 	int rows = im_in.rows; // height
  	int cols = im_in.cols; // width

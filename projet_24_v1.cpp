@@ -9,8 +9,11 @@
  Compilation perso sur PC: 
  g++ -O0 -g projet_24_v1.cpp my_functions.cpp -o projet $(pkg-config --cflags --libs opencv4) -lm
 
- Compilation sur le Jetson : 
+ Compilation sur le Jetson (mono thread): 
  g++ -O0 projet_24_v1.cpp my_functions.cpp mesure_functions.cpp -o projet -I/usr/include/opencv4 $(pkg-config --libs opencv4 2>/dev/null || pkg-config --libs opencv) -lm
+
+ Compilation sur le Jetson (multi thread): 
+ g++ -O0 -fopenmp projet_24_v1.cpp my_functions.cpp mesure_functions.cpp -o projet -I/usr/include/opencv4 $(pkg-config --libs opencv4 2>/dev/null || pkg-config --libs opencv) -lm
 
  *---------------------------------------------------------------------------------------------------
  * auteur : Eva Dokladalova 09/2015
@@ -112,7 +115,7 @@ int main (int argc, char *argv[]) {
   //----------------------------------------------
   // VideoCapture		cap(0); // le numÃ©ro 0 indique le point d'accÃ¨s Ã  la camÃ©ra 0 = > /dev/video0 : LIGNE D'ORIGINE
   // VideoCapture		cap(0, CAP_V4L2); // Ligne à exécuter quand on est sur WSL et non un linux natif (pour fluidifier le formatage des images)
-  VideoCapture cap("video_fleurs_vga.mp4"); // ligne à exécuter pour utiliser une vidéo au lieu de la caméra (prendre la vidéo "video_fleurs_vga.mp4" pour la résolution VGA, et la vidéo "video_fleurs.mp4" pour celle en HD)
+  VideoCapture cap("video_fleurs.mp4"); // ligne à exécuter pour utiliser une vidéo au lieu de la caméra (prendre la vidéo "video_fleurs_vga.mp4" pour la résolution VGA, et la vidéo "video_fleurs.mp4" pour celle en HD)
   if(!cap.isOpened()){
     cout << "Errore"; return -1;
 
@@ -124,13 +127,13 @@ int main (int argc, char *argv[]) {
   // On peut choisir la dÃ©finition de l'image traitée - mais il faut respecter la resolution compatible avec la camera.
   // HD resolution  1 920 Ã— 1 080,
   // HD : 1280 * 720, VGA : 640 * 480
-  int			rows								  = 480;	
-  int			cols								  = 640;
+  int			rows								  = 720;	
+  int			cols								  = 1280;
   cap.set(CAP_PROP_FRAME_WIDTH, cols);	 
   cap.set(CAP_PROP_FRAME_HEIGHT, rows);
 
   // Définition de l'utilisation ou non de l'exécution mono-coeur ou bien de l'exécution parallélisée
-  int nbThreadsUsed = 6;
+  int nbThreadsUsed = 1;
   cv::setNumThreads(nbThreadsUsed);
 
   //----------------------------------------------
@@ -343,7 +346,7 @@ int main (int argc, char *argv[]) {
     // allocation des matrices contenant les images intermédiaires
     im_blurred_my_code = cv::Mat(rows, cols, CV_8UC1);		// niveau de gris (1 cannal)
     grad_my_code = cv::Mat(rows, cols, CV_8UC1);
-    my_median_opti_stg3(im_in_gray, im_blurred_my_code, n, nbThreadsUsed);
+    my_median_opti_stg2(im_in_gray, im_blurred_my_code, n);
     t1 = now_ns();
     temp  = ((double)(t1 - t0))/(1000000.0);
     t_mycode_median_measures.push_back(temp);
@@ -354,7 +357,7 @@ int main (int argc, char *argv[]) {
     // mesure de temps d'exécution de cette partie :
     t0 = now_ns();
     // ********************************************************************** 
-      my_sobel_opti_v3_stg3(im_blurred_my_code, grad_my_code, nbThreadsUsed);
+      my_sobel_opti_v3_stg2(im_blurred_my_code, grad_my_code);
 
     // **********************************************************************
     // mesure de temps d'exécution de cette partie :

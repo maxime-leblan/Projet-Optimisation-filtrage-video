@@ -1,15 +1,15 @@
-;n : 3;Resolution : 720 * 1280;Threads : 6
+;n : 3;Resolution : 720 * 1280;Threads : 6;;
 Type;Nom;Moyenne (ms);Mediane (ms);Min (ms);Max (ms)
 reference;Median;1.815535;1.881440;1.006176;3.533248
 reference;Sobel;10.149507;10.762272;5.349696;14.523968
 mycode;Median;58.809573;60.211072;46.033856;72.243552
 mycode;Sobel;6.206268;6.138752;4.408064;9.978688
- 
-Median Speedup;Sobel Speedup;MyCode Pipeline execution time (ms/img)
-0.030871;1.635364;76.427788
-Reference pipeline FPS;MyCode pipeline FPS
-42.777110;13.084246
-Correctness
-my_median (% pixels with error);0.000000
-my_sobel (% pixels with error);100.000000
-my_sobel maximum absolute difference on every frame;1.000000;0.392157(%)
+ ;;;;;
+Median Speedup;Sobel Speedup;MyCode Pipeline execution time (ms/img);Median naive Speedup;Sobel naive Speedup;
+0.030871;1.635364;76.427788;14,54088123;11,29060108;
+Reference pipeline FPS;MyCode pipeline FPS;;;;
+42.777110;13.084246;;;;
+Correctness;;;;;
+my_median (% pixels with error);0.000000;;;;
+my_sobel (% pixels with error);100.000000;;;;
+my_sobel maximum absolute difference on every frame;1.000000;0.392157(%);;;

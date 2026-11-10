@@ -115,7 +115,7 @@ int main (int argc, char *argv[]) {
   //----------------------------------------------
   // VideoCapture		cap(0); // le numÃ©ro 0 indique le point d'accÃ¨s Ã  la camÃ©ra 0 = > /dev/video0 : LIGNE D'ORIGINE
   // VideoCapture		cap(0, CAP_V4L2); // Ligne à exécuter quand on est sur WSL et non un linux natif (pour fluidifier le formatage des images)
-  VideoCapture cap("video_fleurs.mp4"); // ligne à exécuter pour utiliser une vidéo au lieu de la caméra (prendre la vidéo "video_fleurs_vga.mp4" pour la résolution VGA, et la vidéo "video_fleurs.mp4" pour celle en HD)
+  VideoCapture cap("video_fleurs_vga.mp4"); // ligne à exécuter pour utiliser une vidéo au lieu de la caméra (prendre la vidéo "video_fleurs_vga.mp4" pour la résolution VGA, et la vidéo "video_fleurs.mp4" pour celle en HD)
   if(!cap.isOpened()){
     cout << "Errore"; return -1;
 
@@ -127,8 +127,8 @@ int main (int argc, char *argv[]) {
   // On peut choisir la dÃ©finition de l'image traitée - mais il faut respecter la resolution compatible avec la camera.
   // HD resolution  1 920 Ã— 1 080,
   // HD : 1280 * 720, VGA : 640 * 480
-  int			rows								  = 720;	
-  int			cols								  = 1280;
+  int			rows								  = 480;	
+  int			cols								  = 640;
   cap.set(CAP_PROP_FRAME_WIDTH, cols);	 
   cap.set(CAP_PROP_FRAME_HEIGHT, rows);
 
@@ -387,6 +387,14 @@ int main (int argc, char *argv[]) {
     if (local_max_abs_diff > global_max_abs_diff) global_max_abs_diff = local_max_abs_diff;
 
     key	= waitKey(1);
+
+    if (iter == 0)
+    {
+      if (im_in_gray.isContinuous() && im_blurred_my_code.isContinuous()) {
+          printf("Base im_in  : %p | Step: %zu bytes\n", (void*)im_in_gray.datastart, im_in_gray.step[0]);
+          printf("Base im_out : %p | Step: %zu bytes\n", (void*)im_blurred_my_code.datastart, im_blurred_my_code.step[0]);
+      }
+    }
   }
   printf("========================================\n");
 
